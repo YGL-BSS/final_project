@@ -1,12 +1,16 @@
-| YGL 2기 3팀 Final Project입니다.
+# YGL 2기 3팀 Final Project
 
-# Topic
+## Topic
 * hand gesture recognition 을 통한 패턴 비밀번호 인식 구현
 
-# 팀 구성
+## Team
 * 전유상
 * 박도현
 * 정민형
 
-
+## Description
+* 초기에 사용자가 원하는 손가락 모양을 패스워드 제스쳐로 지정한다.
+* 사용자가 잠금 해제를 할 때, 손 모양으로 다음 제스쳐를 카메라 앞에서 취해야 한다.
+    1. 보자기를 앞으로 내민 스타트 제스쳐
+    2. 초기에 지정한 패스워드 제스쳐
 
