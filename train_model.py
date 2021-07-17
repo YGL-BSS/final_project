@@ -11,3 +11,15 @@ from setting import config
 from preprocessing import hand_segmentation
 from model import gesture_model
 
+# data load
+
+
+# data preprocess
+
+
+# create model
+
+
+# train model
+
+

@@ -1,5 +1,9 @@
 # YGL 2기 3팀 Final Project
 
+```
+파일 명 맨 앞에 test 혹은 test_가 붙은 파일은 테스트용 파일입니다.
+```
+
 ## Topic
 * hand gesture recognition 을 통한 패턴 비밀번호 인식 구현
 
