@@ -12,13 +12,12 @@ def prepocess_data(height=int, width=int, channel=3, get_npy=True, get_images=Fa
     #label list
     label_lst = [label for label in os.listdir(RAW_DATA)]
 
-    #list for y
-    y_lst = []
-    y_temp = 0
-    
     #create ndarray as default
-    if get_npy: data_array = np.empty((0,height,width,channel))
-    
+    if get_npy:
+        data_array = np.empty((0,height,width,channel))
+        y_lst = []
+        y_temp = 0
+
     for label in label_lst:
         #label_path which contains videos
         label_path = os.path.join(RAW_DATA, label)
@@ -86,7 +85,7 @@ def prepocess_data(height=int, width=int, channel=3, get_npy=True, get_images=Fa
                 Y = np.append(Y,y_temp,axis=0)
         np.save(f'{os.path.join(config.PATH_DATA,"Y_data")}',Y)
 
-if __name == '__main__':
+if __name__ == '__main__':
     prepocess_data(width=400,height=300,get_images=True)
 
 
