@@ -41,11 +41,18 @@ def get_coordinate(size,img_path,weights, cfg):
     
     else:
         return 'there is no hand or too many hands'
-
+   
+# input 이미지의 형태를 변형
+# size가 커질 수록 accuracy up, speed down
 size = [320, 416, 608]
-img_path = 'C:/Python/YGL_final_project/Pictures/20210716_145851.jpg'
-weights = 'C:/Python/YGL_final_project/hand-detection-test/cross-hands.weights'
-cfg = 'C:/Python/YGL_final_project/hand-detection-test/cross-hands.cfg'
 
+# 이미지 경로(추후 영상에서 프레임 단위로 받아서 처리 가능할 듯)
+img_path = 'your path'
+
+# 모델 정보
+weights = 'your path'
+cfg = 'your path'
+
+# 손을 감지하고 손을 포함한 직사각형 영역을 반환 후 출력
 coordinate = get_coordinate(size[0], img_path, weights, cfg)
 print(coordinate)
