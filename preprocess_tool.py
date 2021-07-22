@@ -125,7 +125,7 @@ def videos_to_data(height=224, width=224, channel=3, get_npy=True, get_images=Fa
     X_data의 shape을 결정
 
     get_images=False
-    True로 설정 시 이미지를 각label 디렉토리에 저장
+    True로 설정 시 이미지를 preprocess_data/webcam/ 디렉토리에 저장
     height, width 기본값 224
     '''
     #model set
@@ -181,8 +181,64 @@ def videos_to_data(height=224, width=224, channel=3, get_npy=True, get_images=Fa
         np.save(f'{os.path.join(PATH_PREPROCESS_DATA,"Y_data")}',Y)
         return X, Y
 
+def webcam_to_data(height=224, width=224, channel=3, get_npy=True, get_images=False):
+    '''
+    get_npy=True 기본값
+    기본적으로 X_data를 반환. (ndarray)
+    그와 동시에 npy 파일을 저장
+
+    height, width, channel은
+    X_data의 shape을 결정
+
+    get_images=False
+    True로 설정 시 이미지를 각label 디렉토리에 저장
+    height, width 기본값 224
+    '''
+    #model set
+    cfg, weights = dir_item(PATH_YOLO)
+    net, output_layers = make_model(weights,cfg)
+
+    #create ndarray as default
+    if get_npy: X = np.empty((0,height,width,channel))
+    
+    #create folder for images when 'get_images=True'
+    if get_images: folder_path = mkdir_under_path(PATH_PREPROCESS_DATA,'webcam')
+
+    cam = cv2.VideoCapture(0)
+    currentframe = 0
+
+    while cv2.waitKey(33) != ord('q'):
+        ret, frame = cam.read()
+        if ret:
+            hand_area = get_coordinate(320,frame,net,output_layers)
+            if not hand_area: continue
+
+            #slice hand area and resize
+            try: resized_frame = resize_hand(frame,hand_area,height,width)
+            except: continue
+
+            #append data at ndarray as default
+            if get_npy:
+                X = np.append(
+                X, resized_frame.reshape((1,height,width,channel)), axis=0
+                )                    
+            if get_images: #write image when 'get_images=True'
+                filename = os.path.join(folder_path, f'{currentframe:0>5}.jpg')
+                cv2.imwrite(filename, resized_frame)
+            currentframe += 1
+            cv2.imshow('Frame', resized_frame)
+        else: break
+    cam.release()
+    cv2.destroyAllWindows()
+
+    if get_npy:
+        np.save(f'{os.path.join(PATH_PREPROCESS_DATA,"X_data")}',X)
+        return X
+
+
+
+
 
 if __name__ == '__main__': 
-    X,Y = videos_to_data(get_images=True)
+    X = webcam_to_data(get_images=True)
     print(X.shape)
-    print(Y.shape)
