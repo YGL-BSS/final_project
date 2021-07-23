@@ -9,9 +9,9 @@ import argparse
 import wget
 import os
 
-import config
-import preprocess
-import modeling
+# import config
+# import preprocess
+# import modeling
 
 ap = argparse.ArgumentParser(description='Hand Gesture Password 시스템입니다.')
 
@@ -29,11 +29,11 @@ if args.mode == 'ready':
         'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands.cfg',
         'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands.weights',
 
-        'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-tiny-prn.cfg',
-        'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-tiny-prn.weights',
+        # 'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-tiny-prn.cfg',
+        # 'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-tiny-prn.weights',
         
-        'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-yolov4-tiny.cfg',
-        'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-yolov4-tiny.weights'
+        # 'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-yolov4-tiny.cfg',
+        # 'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands-yolov4-tiny.weights'
     ]
 
     for url in url_list:

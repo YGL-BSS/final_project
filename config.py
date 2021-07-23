@@ -36,7 +36,7 @@ def mkdir_under_path(PATH, dir_name):
     try:
         if not os.path.exists(abs_path):
             os.makedirs(abs_path)
-            return abs_path
+        return abs_path
     except OSError:
         print('can not create dir')
 

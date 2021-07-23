@@ -1,14 +1,22 @@
 '''
 모델 관련 코드
+
+# ResNet 구현 참조 링크
+https://junstar92.tistory.com/110
+https://dataplay.tistory.com/27
+
 '''
 
-from tensorflow.keras.models import Sequential
+# from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, ReLU
 from tensorflow.keras.layers import Flatten, Dense
+from tensorflow.keras import Input, Model
+
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
+from tensorflow.python.ops.gen_array_ops import pad
 
 import config
 
@@ -36,19 +44,29 @@ class GestureClassification():
         input shape : (300, 400, 3)
         output shape : (2, )
         '''
-        model = Sequential()
 
-        # Layer 1
-        model.add(Conv2D(8, (4, 4), strides=(1, 1), padding='same', activation='relu', input_shape=(self.height, self.width, 3)))
-        model.add(MaxPooling2D((8, 8), strides=(8, 8), padding='same'))
+        inputs = Input(shape=(self.height, self.width, 3))
 
-        # Layer 2
-        model.add(Conv2D(16, (2,2), strides=(1,1), padding='same',activation='relu'))
-        model.add(MaxPooling2D((4,4), strides=(4,4), padding='same'))
+        x = inputs
+        x_conv = Conv2D(8, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(8, 3, padding='same', activation='relu')(x_conv)
+        x = x_conv
 
-        # Output layer
-        model.add(Flatten())
-        model.add(Dense(self.label, activation='softmax')) #Class 개수
+        x_conv = Conv2D(8, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(8, 3, padding='same', activation='relu')(x_conv)
+        x = x + x_conv
+
+        x_conv = Conv2D(8, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(8, 3, padding='same', activation='relu')(x_conv)
+        x = x + x_conv
+
+        x = MaxPooling2D(2)(x)
+
+        x = Flatten()(x)
+        # x = Dense(10)(x)
+        outputs = Dense(self.label, activation='softmax')(x)
+
+        model = Model(inputs, outputs)
 
         # Compile
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -134,3 +152,5 @@ class GestureClassification():
         입력된 이미지의 분류를 예측하여 결과로 출력하는 함수
         '''
         return self.model.predict(x_test)
+
+
