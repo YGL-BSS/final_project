@@ -3,11 +3,12 @@
 '''
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, ReLU
 from tensorflow.keras.layers import Flatten, Dense
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
 
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import to_categorical
 
 import config
 
@@ -47,7 +48,7 @@ class GestureClassification():
 
         # Output layer
         model.add(Flatten())
-        model.add(Dense(self.num_label, activation='softmax')) #Class 개수
+        model.add(Dense(self.label, activation='softmax')) #Class 개수
 
         # Compile
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -63,7 +64,7 @@ class GestureClassification():
         '''
         # 모델 저장 콜백함수
         cb_checkpoint = ModelCheckpoint(
-            filepath=config.get_model_path(f'trained_model/{name_model}'),
+            filepath=f'saved_model/{name_model}',
             monitor='val_loss',
             verbose=1,
             save_best_only=True,
@@ -72,7 +73,7 @@ class GestureClassification():
         )
 
         # 학습 경과를 csv로 기록하는 콜백함수
-        cb_logger = CSVLogger(filename=config.get_log_path(f'{name_log}.csv'))
+        cb_logger = CSVLogger(filename=f'saved_model/{name_log}.csv')
         
         self.callback = [cb_checkpoint, cb_logger]
 
@@ -82,10 +83,12 @@ class GestureClassification():
     def put_data(self, x, y):
         '''
         손 이미지 데이터를 받아와 전처리 하여 저장한다.
+        x : (data_len, height, width, channel)
+        y : (data_len,)         <- 0 이상의 정수로 라벨링 된 것
         '''
 
         x = x / 255
-        y = y / 255
+        y = to_categorical(y, self.label)
 
         x_train, x_valid, y_train, y_valid = train_test_split(x, y, test_size=0.2, shuffle=True)
 
@@ -97,9 +100,12 @@ class GestureClassification():
 
 
     def start_train(self, epoch=50, batch=64):
-        
+        '''
+        손 이미지 데이터로 모델을 학습시킨다.
+        '''
         self.model.fit(
             self.train_data[0], self.train_data[1],
+            validation_data=self.valid_data,
             epochs=epoch, batch_size=batch,
             callbacks=self.callback,
             verbose=1
@@ -111,3 +117,20 @@ class GestureClassification():
 
         return self.model
 
+
+    def load_model(self, name_model='gesture_model'):
+        '''
+        학습된 모델을 불러오는 함수
+        '''
+        print('Loading model...', end='')
+
+        self.model.load_weights(f'saved_model/{name_model}')
+
+        print('Done!')
+
+
+    def predict(self, x_test):
+        '''
+        입력된 이미지의 분류를 예측하여 결과로 출력하는 함수
+        '''
+        return self.model.predict(x_test)
