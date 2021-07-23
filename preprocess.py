@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import config
+from config import *
 import os
 
 class Preprocessing:
@@ -20,14 +20,16 @@ class Preprocessing:
         train = 해당 영상이 끝날 때 까지 데이터를 모으고 영상 종료시 리턴
         test = 해당 영상을 프레임 단위로 손 이미지만 따서 바로 리턴
     '''
-    def __init__(self, model_select, save = 0, data_for = 'train'):        
+    def __init__(self, model_select, save = False, data_for = 'train'):        
         self.model_select = model_select
-        self.weights = os.path.join(config.PATH_MODEL,f'{Preprocessing.models[self.model_select]}.weights')
-        self.cfg = os.path.join(config.PATH_MODEL,f'{Preprocessing.models[self.model_select]}.cfg')
+        self.weights = os.path.join(PATH_YOLO,f'{Preprocessing.models[self.model_select]}.weights')
+        self.cfg = os.path.join(PATH_YOLO,f'{Preprocessing.models[self.model_select]}.cfg')
+        
         self.x = None
         self.y = None
         self.w = None
         self.h = None
+        
         self.save = save
         self.find_coordinate = False
         self.data_for = data_for
@@ -79,10 +81,22 @@ class Preprocessing:
         else:
             False
     
+    def resize_hand(self, alpha=0.1):
+        '''
+        frame 에서 [x,y,w,h]값을 참조,
+        alpha 값만큼 늘리거나 줄인 영역을 슬라이싱.
+        height,widht 사이즈로 리사이즈하여 반환한다.
+        '''
+        self.start_y = round(self.y * (1-alpha))
+        self.start_x = round(self.x * (1-alpha))
+        self.end_y = round((self.y+self.h) * (1+alpha))
+        self.end_x = round((self.x+self.w) * (1+alpha))
+
+
     # 반환된 좌표를 이용해서 사각형을 그리고 save = 1이면 박스쳐진 이미지를 저장
     '''
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                                    좌표 설정 필요                              
+    
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     '''
     def add_rectangle(self, img, color):
@@ -134,3 +148,11 @@ class Preprocessing:
         cv2.destroyAllWindows()
 
         return train
+
+label_path = dir_item(PATH_RAW_DATA)
+videos_dir = label_path[0]
+videos_dir = dir_item(videos_dir)
+video_path = videos_dir[0]
+
+test = Preprocessing(model_select=0, save=True)
+test.get_data(video_path)
