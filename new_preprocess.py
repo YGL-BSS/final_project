@@ -1,13 +1,25 @@
 import os
 import numpy as np
 import cv2
+import time
+
 import config as cf
 
 class HandDetection():
     '''
     영상에서 손 이미지를 검출해내는 class
     아래 링크의 yolo-hand-detection 모델을 차용함.
-    (링크)
+        https://github.com/cansik/yolo-hand-detection
+    
+    # --------- class 사용 방법 예시 ---------------------
+    case 1. Webcam에서 손 이미지 데이터를 얻는 경우
+        hand = HandDetection(selected_model='v3')
+        hand.video2hand(save_image_dir='label_001')
+    
+    case 2. 저장된 video에서 손 이미지 데이터를 얻는 경우
+        hand = HandDetection(selected_model='v3')
+        hand.video2hand(video_path='./video.mp4', save_image_dir='label_001')
+    # ---------------------------------------------------
     '''
     model_dict = {
         'v3': 'cross-hands',
@@ -22,21 +34,23 @@ class HandDetection():
         self.cfg = os.path.join(cf.PATH_YOLO, f'{self.model_dict[selected_model]}.cfg')
 
         # 불러온 yolo-hand-detection 모델
-        self.net, self.output_layers = self.make_model()
+        print('Load yolo model...', end='')
+        self.net, self.output_layers = self.get_yolo_model()
+        print('Done!\n')
 
         # 저장할 손 이미지의 크기
         self.height = height
         self.width = width
 
 
-    def make_model(self):
+    def get_yolo_model(self):
         net = cv2.dnn.readNet(self.weights, self.cfg)
         layer_names = net.getLayerNames()
         output_layers = [layer_names[i[0]- 1] for i in net.getUnconnectedOutLayers()]
         return net, output_layers
 
 
-    def video2hand(self, size=320, video_path=0, save_image_dir=False):
+    def video2hand(self, yolo_size=320, video_path=0, save_image_dir=False):
         '''
         비디오 -> 원본 이미지 -> 손 이미지 추출 함수
 
@@ -45,8 +59,8 @@ class HandDetection():
         video_path: 0이면 webcam video, 특정 파일의 경로이면 해당 영상을 지정한다.
         save_image: 영상에서 얻은 손 이미지를 디렉토리에 저장한다.
         '''
-        # set yolo-hand-detection model
-        net, output_layers = self.net, self.output_layers
+        # # set yolo-hand-detection model
+        # net, output_layers = self.net, self.output_layers
 
         # ndarray for return
         X_data = np.empty((0, self.height, self.width, 3))
@@ -54,21 +68,38 @@ class HandDetection():
         # get video
         cam = cv2.VideoCapture(video_path)
 
+        # current Frame number
         currentFrame = 0
+        folder = cf.mkdir_under_path(cf.PATH_PREPROCESS_DATA, save_image_dir)
+        for frame_num in [f[:-4] for f in os.listdir(folder) if f.endswith(r".jpg")]:
+            currentFrame = max(currentFrame, int(frame_num))
+        currentFrame += 1
+
+        time_start = time.time()
         while True:
+            # 키 입력시 종료
+            if (video_path == 0) and (cv2.waitKey(20) == ord('q')):
+                break
+
             success, frame = cam.read()
+
+            clear()
+            print(f'사진 저장 디렉토리 : {folder}')
+            print(f'frame no. {currentFrame:0>5d}')
+            print(f'실행시간 : {time.time() - time_start:.2f}초')
             
             # frame이 존재하는 경우
             if success:
 
                 # 손 위치 감지하기
-                hand_area = self.get_coordinate(size, frame)
+                hand_area = self.get_coordinate(yolo_size, frame)
                 if hand_area == False:
                     continue
                 
                 # 손 이미지 가져오기
-                hand_frame = self.resize_hand(frame, hand_area)
-                if hand_frame == False:
+                try:
+                    hand_frame = self.resize_hand(frame, hand_area)
+                except:
                     continue
 
                 # X_data에 손 이미지 하나씩 쌓기
@@ -77,25 +108,32 @@ class HandDetection():
                     np.expand_dims(hand_frame, axis=0)  # hand_frame.reshape((1, height, width, 3))
                 )
                 
+                # 사진 저장하기
                 if save_image_dir != False:
-                    pass
-                    ################################
-                    # 대충 이미지 저장하는 코드
-                    ################################
+                    cv2.imwrite(
+                        os.path.join(folder, f'{currentFrame:0>5d}.jpg'),
+                        # os.path.join(folder, f'{save_image_dir}_{currentFrame}.jpg'),
+                        hand_frame
+                    )
 
+                # Frame 번호 +1
                 currentFrame += 1
+                
+                # 시각화
+                # cv2.imshow('Frame', hand_frame)
 
             # frame이 존재하지 않는 경우
             else:
+                print('완료!')
+                time.sleep(3)
                 break
-        
+
         cam.release()
-        cv2.destroyAllWindows()
+        # cv2.destroyAllWindows()
 
-        ###################
-        # 미완성
-        ###################
+        return X_data
 
+    #########################################################################
 
     def get_coordinate(self, size, frame):
         '''
@@ -108,7 +146,7 @@ class HandDetection():
 
         # yolo-hand-detection 으로 손 위치 감지
         net, output_layers = self.net, self.output_layers
-        blob = cv2.dnn.blobFromImage(img, 1/255, (size,size), (0,0,0), True, crop=False)
+        blob = cv2.dnn.blobFromImage(frame, 1/255, (size,size), (0,0,0), True, crop=False)
         net.setInput(blob)
         outs = net.forward(output_layers)
 
@@ -153,79 +191,12 @@ class HandDetection():
         x_end = round((x+w) * (1+alpha))
 
         # 원본 이미지에서 손 이미지 슬라이싱
-        try:
-            target = frame[y_start:y_end, x_start:x_end]
-        except:
-            # 손 이미지의 좌표가 원본 이미지를 벗어난 경우 예외처리
-            return False
+        target = frame[y_start:y_end, x_start:x_end]
 
         # 의도했던 손 이미지 크기에 맞게 resize해서 반환
         return cv2.resize(target, (self.width, self.height), interpolation=cv2.INTER_CUBIC)
 
 
 
-def videos_to_data(height=224, width=224, channel=3, get_npy=True, get_images=False):
-    '''
-    get_npy=True 기본값
-    기본적으로 (X_data, Y_data)를 반환. 각각 ndarray
-    그와 동시에 npy 파일을 저장
-
-    height, width, channel은
-    X_data의 shape을 결정
-
-    get_images=False
-    True로 설정 시 이미지를 preprocess_data/webcam/ 디렉토리에 저장
-    height, width 기본값 224
-    '''
-    #model set
-    cfg, weights = dir_item(PATH_YOLO)
-    net, output_layers = make_model(weights,cfg)
-
-    #create ndarray as default
-    if get_npy:
-        X = np.empty((0,height,width,channel))
-        y_cnt_lst = []
-        y_cnt_temp = 0
-    
-    #loop for each label
-    for label_path in dir_item(PATH_RAW_DATA):
-        
-        #create folder for images when 'get_images=True'
-        if get_images: mkdir_under_path(PATH_PREPROCESS_DATA,label_path[-3:])
-
-        #loop for reading each videos
-        for video_path in dir_item(label_path):
-            cam = cv2.VideoCapture(video_path)
-            currentframe = 0
-
-            while True:
-                ret, frame = cam.read()
-                if ret:
-                    hand_area = get_coordinate(320,frame,net,output_layers)
-                    if not hand_area: continue
-
-                    #slice hand area and resize
-                    try: resized_frame = resize_hand(frame,hand_area,height,width)
-                    except: continue
-
-                    #append data at ndarray as default
-                    if get_npy:
-                        X = np.append(
-                        X, resized_frame.reshape((1,height,width,channel)), axis=0
-                        )                    
-                    if get_images: #write image when 'get_images=True'
-                        write_img(resized_frame,video_path,currentframe)
-                    currentframe += 1
-                    y_cnt_temp += 1
-                else: break
-            cam.release()
-            cv2.destroyAllWindows()
-        
-        if get_npy:
-            y_cnt_lst.append(y_cnt_temp)
-            y_cnt_temp = 0
-    if get_npy:
-        np.save(f'{os.path.join(PATH_PREPROCESS_DATA,"X_data")}',X)
-        Y = onehot_ndarray(y_cnt_lst)
-        np.save(f'{os.path.join(PATH_PREPROCESS_DATA,"Y_data")}',Y)
-        return X, Y
+def clear():
+    os.system('cls' if os.name == 'nt' else 'clear')
