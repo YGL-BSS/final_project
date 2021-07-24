@@ -1,3 +1,4 @@
+import numpy as np
 import cv2
 import time
 import os
@@ -15,12 +16,23 @@ while True:
     if not success: break
 
     frame = cv2.resize(frame, dsize=(224, 224), interpolation=cv2.INTER_AREA)
+    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Median Filtering
     k_size = 33
     median = cv2.medianBlur(frame, k_size)
 
-    print(frame.shape, median.shape)
+    # print(frame.shape, median.shape)
+
+    # Canny Edge
+    canny = cv2.Canny(frame, 40, 170)
+
+    # Sobel Edge
+    dx = cv2.Sobel(frame_gray, cv2.CV_32F, 1, 0)
+    dy = cv2.Sobel(frame_gray, cv2.CV_32F, 0, 1)
+
+    sobel = cv2.magnitude(dx, dy)
+    sobel = np.clip(sobel, 0, 255).astype(np.uint8)
 
     # # Average Filtering
     # k_size = 33
@@ -41,8 +53,11 @@ while True:
     # num_frame += 1
 
     # 카메라 on
+    # print(frame.shape, canny.shape, sobel.shape)
     cv2.imshow('now cam', frame)
     cv2.imshow('median', median)
+    cv2.imshow('canny', canny)
+    cv2.imshow('sobel', sobel)
 
     # ESC 누르면 창 닫힘
     key = cv2.waitKey(1) & 0xFF
