@@ -8,15 +8,18 @@ https://dataplay.tistory.com/27
 '''
 
 # from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, ReLU
-from tensorflow.keras.layers import Flatten, Dense
 from tensorflow.keras import Input, Model
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Flatten, Dense, Concatenate
+from tensorflow.keras.losses import Loss
 
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 from tensorflow.python.ops.gen_array_ops import pad
+
+import cv2
 
 import config
 
@@ -39,10 +42,11 @@ class GestureClassification():
     def create_model(self):
         '''
         손 제스쳐를 라벨링하는 모델 생성
+        Resnet 기반
 
         Default 값
-        input shape : (300, 400, 3)
-        output shape : (2, )
+        input shape : (legnth, 300, 400, 3)
+        output shape : (length, 2)
         '''
 
         inputs = Input(shape=(self.height, self.width, 3))
@@ -65,6 +69,49 @@ class GestureClassification():
         x = Flatten()(x)
         # x = Dense(10)(x)
         outputs = Dense(self.label, activation='softmax')(x)
+
+        model = Model(inputs, outputs)
+
+        # Compile
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        self.model = model
+
+        return model
+
+    def create_model2(self):
+        '''
+        손 제스쳐를 라벨링하는 모델 생성 v2
+        아래 링크의 논문을 참조하였음.
+        https://sci-hub.se/https://link.springer.com/article/10.1007/s11042-019-7193-4
+
+        Default 값
+        input shape : (length, 300, 400, 3)
+        output shape : (length, )
+        '''
+        inputs = Input(shape=(self.height, self.width, 3))
+
+        x = inputs
+        
+        # Dual Channel 1 : 원래 이미지 처리
+        origin = Conv2D(20, 7, padding='same', activation='relu')(x)
+        origin = MaxPooling2D(2)(origin)
+        origin = Conv2D(20, 7, padding='same', activation='relu')(origin)
+        origin = MaxPooling2D(2)(origin)
+        origin = Flatten()(origin)
+
+        # Dual Channel 2 : Canny Edge된 이미지 처리
+        canny = cv2.Canny(x, 40, 160)
+        canny = Conv2D(20, 7, padding='same', activation='relu')(canny)
+        canny = MaxPooling2D(2)(canny)
+        canny = Conv2D(20, 7, padding='same', activation='relu')(canny)
+        canny = MaxPooling2D(2)(canny)
+        canny = Flatten()(canny)
+
+        # Dual Channel Layer 합치기
+        concate = Concatenate([origin, canny])
+        # concate = Dense(30)(concate)
+        outputs = Dense(self.label)(concate)
 
         model = Model(inputs, outputs)
 
@@ -154,3 +201,24 @@ class GestureClassification():
         return self.model.predict(x_test)
 
 
+class LevenLoss(Loss):
+    '''
+    레벤슈타인 거리를 기반으로한 손실 함수(Loss function)
+    
+    아직 미완성된 코드입니다.
+    '''
+    def __init__(self):
+        super().__init__()
+
+    def call(self, y_true, y_pred):
+        '''
+        아직 미완성된 코드입니다.
+        '''
+        error = abs(y_true, y_pred)
+        ##########################################
+        #
+        # 레벤슈타인 거리 계산하는 코드 넣기!!
+        #
+        ##########################################
+
+        return error
