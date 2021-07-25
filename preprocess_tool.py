@@ -34,8 +34,6 @@ def get_coordinate(size, img, net, output_layers):
     outs = net.forward(output_layers)
 
     # 감지된 좌표 저장
-    boxes = []
-    
     for out in outs:
         for detection in out:
             scores = detection[5:]
@@ -52,18 +50,9 @@ def get_coordinate(size, img, net, output_layers):
                 x = int(center_x - w / 2)
                 y = int(center_y - h / 2)
 
-                boxes.append([x, y, w, h]) 
-    #print(boxes)
-    #print(len(boxes))
-    # if len(boxes) == 1:
-    #     return boxes[0]
-    
-    # else:
-    #     return 'there is no hand or too many hands'
-    if len(boxes):
-        return boxes[0]
-    else:
-        return False
+                coordinate = [x, y, w, h]
+                return coordinate
+    return False
 
 def resize_hand(frame, hand_area, height, width, alpha=0.1):
     '''
@@ -235,10 +224,43 @@ def webcam_to_data(height=224, width=224, channel=3, get_npy=True, get_images=Fa
         np.save(f'{os.path.join(PATH_PREPROCESS_DATA,"X_data")}',X)
         return X
 
+def model(frame):
+    return True
 
+def start_motion(frame, hand_area):
+    return model(resize_hand(frame, hand_area, 300,400, 0))
+        
+def fix_rectangle():
 
+    cfg, weights = dir_item(PATH_YOLO)
+    net, output_layers = make_model(weights, cfg)
+    cam = cv2.VideoCapture(0)
+    find_coordinate = 0
+    while cv2.waitKey(33) != ord('q'):
+        success, frame = cam.read()
+        if success:
+            if find_coordinate < 15:
+                coordinate = get_coordinate(320, frame, net,output_layers)
+                if coordinate and start_motion(frame, coordinate):                    
+                    find_coordinate += 1
+            
+            elif find_coordinate == 15:
+                x, y, w, h = coordinate
+                find_coordinate += 1
+                print('Hand Detected!!!!!!')
+            
+            else:               
+                cv2.rectangle(frame, (x,y), (x+w, y+h), (0,255,0), 3)
+                
+            cv2.imshow('frame',frame)
+        
+        else:
+            break
 
+    cam.release()
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__': 
-    X = webcam_to_data(get_images=True)
-    print(X.shape)
+    # X = webcam_to_data(get_images=True)
+    # print(X.shape)
+    fix_rectangle()
