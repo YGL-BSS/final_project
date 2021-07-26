@@ -9,16 +9,17 @@ https://dataplay.tistory.com/27
 
 # from tensorflow.keras.models import Sequential
 from tensorflow.keras import Input, Model
-from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Lambda
 from tensorflow.keras.layers import Flatten, Dense, Concatenate
 from tensorflow.keras.losses import Loss
 
-from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
+from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
-from tensorflow.python.ops.gen_array_ops import pad
+# from tensorflow.python.ops.gen_array_ops import pad
 
+import numpy as np
 import cv2
 
 import config
@@ -27,7 +28,7 @@ class GestureClassification():
     '''
     손 이미지를 라벨링하는 모델
     '''
-    def __init__(self, image_size=(300, 400), num_label=2):
+    def __init__(self, image_size=(224, 224), num_label=6):
         self.height = image_size[0]
         self.width = image_size[1]
         self.label = num_label
@@ -45,7 +46,7 @@ class GestureClassification():
         Resnet 기반
 
         Default 값
-        input shape : (legnth, 300, 400, 3)
+        input shape : (legnth, height, width, 3)
         output shape : (length, 2)
         '''
 
@@ -86,27 +87,38 @@ class GestureClassification():
         https://sci-hub.se/https://link.springer.com/article/10.1007/s11042-019-7193-4
 
         Default 값
-        input shape : (length, 300, 400, 3)
+        input shape : (length, height, width, 3)
         output shape : (length, )
         '''
+        # Conv2D Layer 채널 수
+        channel = 10
+
         inputs = Input(shape=(self.height, self.width, 3))
 
         x = inputs
         
         # Dual Channel 1 : 원래 이미지 처리
-        origin = Conv2D(20, 7, padding='same', activation='relu')(x)
+        origin = Conv2D(channel, 7, padding='same', activation='relu')(x)
         origin = MaxPooling2D(2)(origin)
-        origin = Conv2D(20, 7, padding='same', activation='relu')(origin)
+        origin = Conv2D(channel, 7, padding='same', activation='relu')(origin)
         origin = MaxPooling2D(2)(origin)
         origin = Flatten()(origin)
 
         # Dual Channel 2 : Canny Edge된 이미지 처리
-        canny = cv2.Canny(x, 40, 160)
-        canny = Conv2D(20, 7, padding='same', activation='relu')(canny)
+        # canny = cv2.Canny(x, 40, 160)
+        canny = Lambda(lambda img: cv2.Canny(img, 40, 160))(x)
+        canny = Conv2D(channel, 7, padding='same', activation='relu')(canny)
         canny = MaxPooling2D(2)(canny)
-        canny = Conv2D(20, 7, padding='same', activation='relu')(canny)
+        canny = Conv2D(channel, 7, padding='same', activation='relu')(canny)
         canny = MaxPooling2D(2)(canny)
         canny = Flatten()(canny)
+
+        # # Dual Channel 2-2 : Sobel Edge된 이미지 처리
+        # dx = cv2.Sobel(x, cv2.CV_32F, 1, 0)
+        # dy = cv2.Sobel(x, cv2.CV_32F, 0, 1)
+
+        # canny = cv2.magnitude(dx, dy)
+        # canny = np.clip(canny, 0, 255).astype(np.uint8)
 
         # Dual Channel Layer 합치기
         concate = Concatenate([origin, canny])
@@ -139,8 +151,13 @@ class GestureClassification():
 
         # 학습 경과를 csv로 기록하는 콜백함수
         cb_logger = CSVLogger(filename=f'saved_model/{name_log}.csv')
+
+        # 모델 개선이 되지않으면 학습을 조기종료하는 콜백함수
+        cb_earlystop = EarlyStopping(
+
+        )
         
-        self.callback = [cb_checkpoint, cb_logger]
+        self.callback = [cb_checkpoint, cb_logger, cb_earlystop]
 
         return self.callback
 
@@ -222,3 +239,17 @@ class LevenLoss(Loss):
         ##########################################
 
         return error
+
+
+from tensorflow.keras.layers import Layer
+class SobelLayer(Layer):
+    def __init__(self):
+        super(SobelLayer, self).__init__()
+    
+    def build(self, input_shape):
+        self.kernal = self.add_variable("kernel")
+        ##############################
+        # 미완성
+        #
+        # 참고링크 : https://nodoudt.tistory.com/42
+        ##############################
