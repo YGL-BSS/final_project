@@ -251,11 +251,7 @@ class GestureClassification():
     def create_model3(self):
         '''
         손 제스쳐를 라벨링하는 모델 생성
-        Resnet 기반
-
-        Default 값
-        input shape : (legnth, 300, 400, 3)
-        output shape : (length, 2)
+        무지성 코드 on
         '''
 
         inputs = Input(shape=(self.height, self.width, 3))
@@ -314,7 +310,7 @@ class GestureClassification():
         return model
 
 
-
+    
 
 
 
@@ -337,7 +333,7 @@ class GestureClassification():
 
         # 모델 개선이 되지않으면 학습을 조기종료하는 콜백함수
         cb_earlystop = EarlyStopping(
-
+            monitor='val_loss', patience=5, verbose=1
         )
         
         self.callback = [cb_checkpoint, cb_logger, cb_earlystop]
