@@ -7,6 +7,7 @@ import modeling
 
 # model load
 model = modeling.GestureClassification()
+model.create_model3()
 model.load_model()
 
 cap = cv2.VideoCapture(0)
@@ -31,7 +32,7 @@ while True:
     if num_frame % 5 == 0:
         result = model.predict(np.expand_dims(frame, axis=0))[0].tolist()
         result_label = labels[result.index(max(result))]
-        print(result_label)
+        print(result_label, max(result))
 
 
     # 카메라 on

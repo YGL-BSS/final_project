@@ -21,4 +21,6 @@ import os
 # model.start_train()
 
 model = modeling.GestureClassification()
+# model.create_model_resnext()
+model.create_model_dense()
 print(model.model.summary())

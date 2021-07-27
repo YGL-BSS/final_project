@@ -6,12 +6,13 @@ https://junstar92.tistory.com/110
 https://dataplay.tistory.com/27
 
 '''
-
 # from tensorflow.keras.models import Sequential
 from tensorflow.keras import Input, Model
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Lambda
-from tensorflow.keras.layers import Flatten, Dense, Concatenate
+from tensorflow.keras.layers import Conv2D, Lambda, BatchNormalization, Activation
+from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D, ZeroPadding2D, AvgPool2D
+from tensorflow.keras.layers import Flatten, Dense, Concatenate, Add
 from tensorflow.keras.losses import Loss
+import tensorflow.keras.backend as K
 
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
 
@@ -105,8 +106,8 @@ class GestureClassification():
         origin = Flatten()(origin)
 
         # Dual Channel 2 : Canny Edge된 이미지 처리
-        # canny = cv2.Canny(x, 40, 160)
-        canny = Lambda(lambda img: cv2.Canny(img, 40, 160))(x)
+        canny = cv2.Canny(x, 40, 160)
+        # canny = Lambda(lambda imgs: canny_edge(imgs))(x)
         canny = Conv2D(channel, 7, padding='same', activation='relu')(canny)
         canny = MaxPooling2D(2)(canny)
         canny = Conv2D(channel, 7, padding='same', activation='relu')(canny)
@@ -133,6 +134,188 @@ class GestureClassification():
         self.model = model
 
         return model
+
+
+    ################################################################ ResNext start
+    ######
+    def create_model_resnext(self):
+        '''
+        손 제스쳐를 라벨링하는 모델 : color image 버전
+        ResNext-50 (32x4d) 구현
+        '''
+        inputs = Input(shape=(self.height, self.width, 3))
+
+        conv1 = Conv2D(filters=64,kernel_size=(7,7),strides=(2,2),padding="same")(inputs)
+        conv1 = BatchNormalization()(conv1)
+        conv1 = Activation("relu")(conv1)
+
+        conv = MaxPooling2D(pool_size=(3,3),strides=(2,2),padding="same")(conv1)
+        
+        counts = [[3,[128,128,256]],[4,[256,256,512]],[6,[512,512,1024]],[3,[1024,1024,2048]]]
+        for count in counts:
+            num = count[0]
+            fil_num = count[1]
+            for _ in range(num):
+                conv = self.group_conv(conv, fil_num)
+        conv = GlobalAveragePooling2D()(conv)
+        outputs = Dense(self.label, activation="softmax")(conv)
+
+        model = Model(inputs,outputs)
+        
+        # Compile
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        self.model = model
+
+        return model
+
+    def group_conv(self, x, count_filter):
+        first, second, third = count_filter
+        input_x = x
+        x = Conv2D(filters=first, kernel_size=(1,1), strides=(1,1), padding="same")(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
+
+        x = Conv2D(groups=32, filters=second, kernel_size=(3,3), strides=(1,1), padding="same")(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
+
+        x = Conv2D(filters=third ,kernel_size=(1,1), strides=(1,1), padding="same")(x)
+        x = BatchNormalization()(x)
+        
+        conx = Conv2D(filters=third, kernel_size=(1,1), strides=(1,1), padding="same")(input_x)
+        conx = BatchNormalization()(conx)
+
+        x = Add()([x,conx])
+        x = Activation('relu')(x)
+
+        return x
+    ######
+    ################################################################ ResNext end
+
+
+    ################################################################ DenseNet start
+    ######
+    def create_model_dense(self):
+        '''
+        손 제스쳐를 라벨링하는 모델 : color image 버전
+        DenseNet 구현
+        '''
+        inputs = Input(shape=(self.height, self.width, 3))
+
+        x = Conv2D(filters=64, kernel_size=(7,7), strides=(2,2), padding="same")(inputs)
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+
+        x = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="same")(x)
+
+        for repetition in [6, 12, 24, 16]:
+            d = self.dense_block(x, repetition)
+            x = self.transition_layer(d)
+        
+        x = GlobalAveragePooling2D()(d)
+        outputs = Dense(self.label, activation="softmax")(x)
+
+        model = Model(inputs, outputs)
+
+        # Compile
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        self.model = model
+
+        return model
+
+    #batch norm + relu + conv
+    def bn_rl_conv(self, x, filters, kernel=1, strides=1):
+        x = BatchNormalization()(x)
+        x = Activation("relu")(x)
+        x = Conv2D(filters, kernel, strides=strides, padding='same')(x)
+        return x
+
+
+    def dense_block(self, x, repetition):
+        for _ in range(repetition):
+            y = self.bn_rl_conv(x, filters=4*32, kernel=1)
+            y = self.bn_rl_conv(y, filters=32, kernel=3)
+        return x
+
+    def transition_layer(self, x):
+        x = self.bn_rl_conv(x, K.int_shape(x)[-1] //2 )
+        x = AvgPool2D(2, strides=2, padding='same')(x)
+        return x
+
+    ######
+    ################################################################ DenseNet end
+
+
+    def create_model3(self):
+        '''
+        손 제스쳐를 라벨링하는 모델 생성
+        Resnet 기반
+
+        Default 값
+        input shape : (legnth, 300, 400, 3)
+        output shape : (length, 2)
+        '''
+
+        inputs = Input(shape=(self.height, self.width, 3))
+
+        x = inputs
+        x_conv = Conv2D(16, 7, padding='same', activation='relu')(x)
+        x_conv = Conv2D(16, 7, padding='same', activation='relu')(x_conv)
+        x = x_conv
+
+        x_conv = Conv2D(16, 7, padding='same', activation='relu')(x)
+        x_conv = Conv2D(16, 7, padding='same', activation='relu')(x_conv)
+        x = x + x_conv
+
+        x = MaxPooling2D(2)(x)
+
+        x_conv = Conv2D(64, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(64, 3, padding='same', activation='relu')(x_conv)
+        x = x_conv
+
+        x_conv = Conv2D(64, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(64, 3, padding='same', activation='relu')(x_conv)
+        x = x + x_conv
+
+        x = MaxPooling2D(2)(x)
+
+        x_conv = Conv2D(128, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(128, 3, padding='same', activation='relu')(x_conv)
+        x = x_conv
+
+        x_conv = Conv2D(128, 3, padding='same', activation='relu')(x)
+        x_conv = Conv2D(128, 3, padding='same', activation='relu')(x_conv)
+        x = x + x_conv
+
+        x = MaxPooling2D(2)(x)
+
+        x = Flatten()(x)
+        # x = Dense(10)(x)
+        x_dense = Dense(16, activation='relu')(x)
+        x = x_dense
+        
+        x_dense = Dense(64, activation='relu')(x)
+        x = x_dense
+
+        x_dense = Dense(36, activation='relu')(x)
+        x = x_dense
+        
+        outputs = Dense(self.label, activation='softmax')(x)
+
+        model = Model(inputs, outputs)
+
+        # Compile
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        self.model = model
+
+        return model
+
+
+
+
 
 
     def create_callback(self, name_model='gesture_model', name_log='saved_log'):
@@ -242,9 +425,11 @@ class LevenLoss(Loss):
 
 
 from tensorflow.keras.layers import Layer
-class SobelLayer(Layer):
-    def __init__(self):
-        super(SobelLayer, self).__init__()
+class CannyLayer(Layer):
+    def __init__(self, ths_min, ths_max):
+        super(CannyLayer, self).__init__()
+        self.ths_min = ths_min
+        self.ths_max = ths_max
     
     def build(self, input_shape):
         self.kernal = self.add_variable("kernel")
@@ -253,3 +438,13 @@ class SobelLayer(Layer):
         #
         # 참고링크 : https://nodoudt.tistory.com/42
         ##############################
+
+
+def canny_edge(imgs):
+    print(type(imgs))
+    print(type(imgs.numpy()))
+    can = imgs.numpy().copy()
+    for n, img in enumerate(imgs):
+        can[n] = cv2.Canny(img, 40, 160)
+
+    return can
