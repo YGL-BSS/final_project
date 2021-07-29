@@ -5,10 +5,9 @@
 import os
 
 PATH_BASE = os.path.dirname(__file__)
-PATH_PREPROCESS_DATA = os.path.join(PATH_BASE, 'preprocess_data')
-PATH_RAW_DATA = os.path.join(PATH_BASE, 'raw_data')
+
+PATH_VIDEO = os.path.join(PATH_BASE, 'hand_video')
 PATH_SAVED_MODEL = os.path.join(PATH_BASE, 'saved_model')
-PATH_TEST_VIDEO = os.path.join(PATH_BASE, 'test_video')
 PATH_YOLO = os.path.join(PATH_BASE, 'yolo')
 
 def get_path(PATH, data_name):
@@ -17,13 +16,25 @@ def get_path(PATH, data_name):
     '''
     return os.path.join(PATH, data_name)
 
-def dir_item(abs_path):
+def dir_items_path(abs_path):
     '''
     매개변수로 특정 디렉토리의 절대경로를 받는다.
     해당 디렉토리 내의 모든 아이템들의 절대경로를 
     리스트에 담아 반환한다.
     '''
-    return [os.path.join(abs_path, item) for item in os.listdir(abs_path)]
+    items_path = [os.path.join(abs_path, item) for item in os.listdir(abs_path)]
+    return items_path
+
+def dir_subdirs_path(abs_path):
+    '''
+    매개변수로 특정 디렉토리의 절대경로를 받는다.
+    해당 디렉토리의 모든 하위 폴더의 절대경로를 리스트에 담아 반환한다.
+    '''
+    items_list = dir_items_path(abs_path)
+    dirs_list = filter(os.path.isdir, items_list)
+    dirs_list = list(dirs_list)
+    return dirs_list
+
 
 def mkdir_under_path(PATH, dir_name):
     '''
@@ -43,9 +54,7 @@ def mkdir_under_path(PATH, dir_name):
 
 
 if __name__ == '__main__':
-    print('base path :', PATH_BASE)
-    print('preprocess data path :', PATH_PREPROCESS_DATA)
-    print('raw data path :', PATH_RAW_DATA)
-    print('saved model path :', PATH_SAVED_MODEL)
-    print('test video path :', PATH_TEST_VIDEO)
-    print('yolo path :', PATH_YOLO)
+
+    # 'hand_video/'에 라벨별로 빈 폴더 생성
+    for label in ['rock', 'scissor', 'paper', 'K', 'W', 'L']:
+        mkdir_under_path(PATH_VIDEO, label)
