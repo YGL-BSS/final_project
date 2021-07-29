@@ -31,7 +31,7 @@ def densenet(input_shape, n_classes, filters = 32):
     x = Conv2D(64, 7, strides=2, padding='same')(input)
     x = MaxPooling2D(3, strides=2, padding='same')(x)
 
-    for repetition in [6,12,32,32]:
+    for repetition in [6,12,24,16]:
         d = dense_block(x, repetition)
         x = transition_layer(d)
 
@@ -46,7 +46,3 @@ n_classes = 3
 
 model = densenet(input_shape,n_classes)
 model.summary()
-
-
-
-
