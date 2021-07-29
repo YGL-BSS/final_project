@@ -321,3 +321,28 @@ class DataLoader():
             print('There is no such label in "preprocess_data" directory.')
             return False
 
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+class Augmentation():
+    '''
+    적은 데이터셋을 다양하게 변형하여 저장하는 class
+    '''
+    def __init__(self):
+        self.aug_gen = ImageDataGenerator(
+            rescale=1./255,
+            rotation_range=40,
+            width_shift_range=0.1,
+            height_shift_range=0.1,
+            shear_range=0.1,
+            zoom_range=0.2,
+            horizontal_flip=True,
+            vertical_flip=False,
+            fill_mode='reflect'
+        )
+        self.aug_load = self.aug_gen.flow_from_directory(
+            './raw_dataset',
+            target_size=(224, 224),
+            class_mode='categorical',
+            save_to_dir='./preprocess_dataset',
+            save_format='jpg'
+        )

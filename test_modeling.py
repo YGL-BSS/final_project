@@ -19,47 +19,52 @@ import cv2
 
 datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=45,
+    rotation_range=40,
     width_shift_range=0.1,
     height_shift_range=0.1,
     shear_range=0.2,
     zoom_range=0.2,
-    horizontal_flip=False,
-    vertical_flip=True,
-    fill_mode='nearest'
+    horizontal_flip=True,
+    vertical_flip=False,
+    fill_mode='reflect'
 )
 
-# datagenset = datagen.flow_from_directory(
-#     './dataset/wonki',
-#     target_size=(224, 224, 3),
-#     class_mode='categorical'
-# )
+datagenset = datagen.flow_from_directory(
+    './dataset/ex',
+    target_size=(224, 224),
+    classes=['ogu', 'won'],
+    class_mode='categorical',
+    save_to_dir='./dataset/ex2',
+    save_format='jpg'
+)
 
 # print(datagenset)
 
-img = load_img('dataset/wonki/원기.jpg')
-x = img_to_array(img)
-x = x.reshape((1,) + x.shape)
-
-datagenset = datagen.flow(
-    x, batch_size=1,
-    save_to_dir='dataset', save_prefix='won', save_format='jpg'
-)
+# img = load_img('dataset/wonki/원기.jpg')
+# x = img_to_array(img)
+# x = x.reshape((1,) + x.shape)
+# datagenset = datagen.flow(
+#     x, batch_size=1,
+#     save_to_dir='dataset', save_prefix='won', save_format='jpg'
+# )
 
 import matplotlib.pyplot as plt
 
-plt.figure(figsize=(4, 5))
+plt.figure(figsize=(2, 5))
 
-i = 1
-for n, batch in enumerate(datagenset):
-    print(batch.shape, n)
-    ax = plt.subplot(4, 5, i)
+i = 0
+for a, b in datagenset:
+    print(a.shape, b.shape)
+    print(b)
     i += 1
-    plt.imshow((batch[0]*255).astype('uint8'))
-    if i > 20:
+    ax = plt.subplot(2, 5, i)
+    plt.imshow(a[0])
+    ax = plt.subplot(2, 5, i+5)
+    plt.imshow(a[1])
+
+    if i >= 4:
         break
 
-
-
+plt.show()
 
 

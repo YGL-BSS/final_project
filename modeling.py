@@ -6,9 +6,10 @@ https://junstar92.tistory.com/110
 https://dataplay.tistory.com/27
 
 '''
-# from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
 from tensorflow.keras import Input, Model
-from tensorflow.keras.layers import Conv2D, Lambda, BatchNormalization, Activation
+from tensorflow.keras.layers import Conv2D, Lambda, BatchNormalization, Activation, concatenate
 from tensorflow.keras.layers import MaxPooling2D, GlobalAveragePooling2D, ZeroPadding2D, AvgPool2D
 from tensorflow.keras.layers import Flatten, Dense, Concatenate, Add
 from tensorflow.keras.losses import Loss
@@ -209,6 +210,9 @@ class GestureClassification():
 
         x = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="same")(x)
 
+        # DenseNet-121 : 6, 12, 24, 16
+        # DenseNet-169 : 6, 12, 32, 32
+        # DenseNet-201 : 6, 12, 48, 32
         for repetition in [6, 12, 24, 16]:
             d = self.dense_block(x, repetition)
             x = self.transition_layer(d)
@@ -237,6 +241,7 @@ class GestureClassification():
         for _ in range(repetition):
             y = self.bn_rl_conv(x, filters=4*32, kernel=1)
             y = self.bn_rl_conv(y, filters=32, kernel=3)
+            x = concatenate([y, x])
         return x
 
     def transition_layer(self, x):
@@ -358,6 +363,57 @@ class GestureClassification():
 
         print(f'훈련 데이터 : x={x_train.shape}, y={y_train.shape}')
         print(f'검증 데이터 : x={x_valid.shape}, y={y_valid.shape}')
+
+
+    def aug_data_train(self, train_data_dir, valid_data_dir, epoch=50, batch=64):
+        '''
+        data_dir 디렉토리에 라벨별로 하위 디렉토리 분류된 이미지 데이터셋을 로드한다.
+        이후 바로 학습을 진행한다. 
+        '''
+        train_gen = ImageDataGenerator(
+            rescale=1./255,
+            rotation_range=40,
+            width_shift_range=0.02,
+            height_shift_range=0.02,
+            shear_range=0.1,
+            zoom_range=0.2,
+            horizontal_flip=True,
+            vertical_flip=False,
+            fill_mode='constant'    # reflect, constant 중 선택 추천
+        )
+        valid_gen = ImageDataGenerator(
+            rescale=1./255
+        )
+
+        train_load = train_gen.flow_from_directory(
+            train_data_dir,
+            target_size=(self.height, self.width),
+            batch_size=batch,
+            class_mode='categorical'
+        )
+        valid_load = valid_gen.flow_from_directory(
+            valid_data_dir,
+            target_size=(self.height, self.width),
+            batch_size=batch,
+            class_mode='categorical'
+        )
+
+        self.model.fit_generator(
+            train_load,
+            epochs=epoch, 
+            steps_per_epoch=100,
+            # batch_size=batch, 
+            validation_data=valid_load,
+            validation_steps=50,
+            callbacks=self.callback,
+            verbose=1
+        )
+
+        print('\n')
+        print('Model Train Done')
+        print('\n')
+
+        return self.model
 
 
     def start_train(self, epoch=50, batch=64):
