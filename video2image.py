@@ -12,12 +12,11 @@ import os
 
 
 # Yolo-hand-detection 에서 pretrained 모델 불러오기
-# url_list = [
-#     'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands.cfg',
-#     'https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands.weights',
-# ]
-# for url in url_list:
-#     wget.download(url, out='./yolo')
+if not os.path.exists('./yolo/cross-hands.cfg'):
+    wget.download('https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands.cfg', out='./yolo')
+
+if not os.path.exists('./yolo/cross-hands.weights'):
+    wget.download('https://github.com/cansik/yolo-hand-detection/releases/download/pretrained/cross-hands.weights', out='./yolo')
 
 print('Load yolo model...', end='')
 net = cv2.dnn.readNet(f'{cf.PATH_YOLO}/cross-hands.weights', f'{cf.PATH_YOLO}/cross-hands.cfg')
