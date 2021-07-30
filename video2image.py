@@ -70,8 +70,11 @@ labels = [os.path.basename(label_path) for label_path in labels_path]
 PATH_DATASET = cf.mkdir_under_path(cf.PATH_BASE, 'dataset')
 PATH_ORIGIN = cf.mkdir_under_path(PATH_DATASET, 'origin')
 PATH_ORIGIN_BOX = cf.mkdir_under_path(PATH_DATASET, 'origin_box')
+PATH_COORD = cf.mkdir_under_path(PATH_DATASET, 'coordinate')
 
-box_coordinates = pd.DataFrame(columns=['label', 'image_name', 'x_start', 'x_end', 'y_start', 'y_end'])
+# box_coordinates = pd.DataFrame(columns=['label', 'image_name', 'x_start', 'x_end', 'y_start', 'y_end'])
+# box_coordinates = pd.DataFrame(columns=['label', 'image_name', 'x', 'y', 'w', 'h']) # x,y는 객체중심좌표, w,h는 객체사이즈
+
 
 for label, label_path in zip(labels, labels_path):
     print()
@@ -79,6 +82,7 @@ for label, label_path in zip(labels, labels_path):
 
     cf.mkdir_under_path(PATH_ORIGIN, label)
     cf.mkdir_under_path(PATH_ORIGIN_BOX, label)
+    cf.mkdir_under_path(PATH_COORD, label)
 
     videos_path = cf.dir_items_path(label_path)
     videos = [os.path.basename(video_path) for video_path in videos_path]
@@ -107,37 +111,47 @@ for label, label_path in zip(labels, labels_path):
                 
                 # hand box 조정하기
                 center_x, center_y, w, h = hand_area
-                scale = 1.20
+                x_scale = 1.20
+                y_scale = 1.1
 
-                x_start = max(0, int(center_x - w*scale/2))
-                y_start = max(0, int(center_y - h*scale/2))
-                x_end = min(frame.shape[1], int(center_x + w*scale/2))
-                y_end = min(frame.shape[0], int(center_y + h*scale/2))
+                x_start = max(0, int(center_x - w*x_scale/2))
+                y_start = max(0, int(center_y - h*y_scale/2))
+                x_end = min(frame.shape[1], int(center_x + w*x_scale/2))
+                y_end = min(frame.shape[0], int(center_y + h*y_scale/2))
 
                 # hand box 그리기
                 frame_box = frame.copy()
                 cv2.rectangle(frame_box, (x_start, y_start), (x_end, y_end), (0, 255, 255), 2)
 
+                # Normalized coordinate 계산
+                X = (x_end + x_start) / 2 / frame.shape[1]
+                Y = (y_end + y_start) / 2 / frame.shape[0]
+                W = (x_end - x_start) / frame.shape[1]
+                H = (y_end - y_start) / frame.shape[0]
+
                 # 저장하기
-                img_name = f'{video[:-4]}_{num_frame:0>5d}.jpg'
+                img_name = f'{video[:-4]}_{num_frame:0>5d}'
                 cv2.imwrite(
-                    f'{PATH_ORIGIN}/{label}/{img_name}',
+                    f'{PATH_ORIGIN}/{label}/{img_name}.jpg',
                     frame
                 )
                 cv2.imwrite(
-                    f'{PATH_ORIGIN_BOX}/{label}/{img_name}',
+                    f'{PATH_ORIGIN_BOX}/{label}/{img_name}.jpg',
                     frame_box
                 )
-                box_coordinate = pd.DataFrame(
-                    [[label, img_name, x_start, x_end, y_start, y_end]],
-                    columns=box_coordinates.columns
-                )
-                box_coordinates = box_coordinates.append(box_coordinate)
+                # box_coordinate = pd.DataFrame(
+                #     [[label, img_name, X, Y, W, H]],
+                #     columns=box_coordinates.columns
+                # )
+                # box_coordinates = box_coordinates.append(box_coordinate)
+                f = open(f'{PATH_COORD}/{label}/{img_name}.txt', 'w')
+                f.write(f'{labels.index(label)} {X} {Y} {W} {H}')
+                f.close()
 
             else:
                 print('Done!')
                 break
 
-# 좌표값 저장하기
-box_coordinates.to_csv(os.path.join(PATH_DATASET, 'coordinates.csv'), index=None)
+# # 좌표값 저장하기
+# box_coordinates.to_csv(os.path.join(PATH_DATASET, 'coordinates.csv'), index=None)
 
