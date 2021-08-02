@@ -8,7 +8,8 @@ import os
 import colorsys
 import random
 
-model_name = 'yolov4_testing'
+model_name = 'custom-yolov4-tiny-detector'
+target_len = 608
 
 weights = os.path.join(cf.PATH_YOLO, f'{model_name}_final.weights')
 cfg = os.path.join(cf.PATH_YOLO, f'{model_name}.cfg')
@@ -27,7 +28,7 @@ with open(os.path.join(cf.PATH_YOLO, 'obj.names'), 'r') as f:
 
 # 함수 정의
 def image_preprocess(image):
-    target_len = 416
+    # target_len = 416
     image_h, image_w, _ = image.shape
 
     scale = min(target_len/image_w, target_len/image_h)
@@ -44,11 +45,11 @@ def image_preprocess(image):
 
 def get_bboxes(image, net, output_layers):
     height, width, _ = image.shape
-    blob = cv2.dnn.blobFromImage(image, 1/255, (416, 416), (0, 0, 0), True, crop=False)
+    blob = cv2.dnn.blobFromImage(image, 1/255, (target_len, target_len), (0, 0, 0), True, crop=False)
     net.setInput(blob)
     outs = net.forward(output_layers)
 
-    # print('outs :', type(outs), len(outs))
+    # print('outs :', type(outs), len(outs[0]), len(outs[1]), len(outs[2]))
 
     bboxes = np.concatenate(outs)
     bboxes[:, 0] = bboxes[:, 0] * width
@@ -195,7 +196,7 @@ def postprocess_boxes(pred_bbox, original_image, input_size, score_threshold):
 def detect_image(image, net, output_layers):
     
     pred_bboxes = get_bboxes(image, net, output_layers)
-    bboxes = postprocess_boxes(pred_bboxes, image, input_size=416, score_threshold=0.25)
+    bboxes = postprocess_boxes(pred_bboxes, image, input_size=target_len, score_threshold=0.25)
     best_bboxes = nms(bboxes, iou_threshold=0.45)
     image_bbox = draw_bbox(image, best_bboxes)
 
@@ -221,7 +222,7 @@ while True:
     cTime = time.time()
     fps = 1 / (cTime-pTime)
     pTime = cTime
-    cv2.putText(frame_box, f'FPS: {int(fps)}', (280, 100), cv2.FONT_HERSHEY_SIMPLEX,
+    cv2.putText(frame_box, f'FPS: {fps:.2f}', (280, 100), cv2.FONT_HERSHEY_SIMPLEX,
     0.8, (255, 0, 0), 2)
 
     cv2.imshow('detected', frame_box)
