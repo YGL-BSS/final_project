@@ -59,8 +59,12 @@ def get_coordinate(size, img):
     if len(boxes):
         return boxes[0]
     else:
-        return False
-
+        print('default')
+        center_x = int(0.5 * width)
+        center_y = int(0.5 * height)
+        w = int(0.3 * width)
+        h = int(0.3 * height)
+        return [center_x, center_y, w, h]
 
 
 # 영상에서 손이 찍힌 원본 이미지 추출하기
@@ -98,15 +102,18 @@ for label, label_path in zip(labels, labels_path):
             success_cnt = 0
             if success:
 
+                num_frame += 1
+
                 # 손 위치 감지하기
                 hand_area = get_coordinate(320, frame)
-                if hand_area == False:
-                    continue
-                else:
-                    num_frame += 1
+                
+                # if hand_area == False:
+                #     continue
+                # else:
+                #     num_frame += 1
 
-                # 5개 frame에 1개씩만 진행하기
-                if num_frame % 5 != 1:  # 1, 6, 11, ... 만 저장하기
+                # 6개 frame에 1개씩만 진행하기
+                if num_frame % 6 != 1:  # 1, 6, 11, ... 만 저장하기
                     continue
                 
                 # hand box 조정하기
