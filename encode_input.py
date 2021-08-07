@@ -35,11 +35,11 @@ class EncodeInput:
     def verify(self):
         output = None
         if self.none_count == self.alpha:
-            self.reset_count
+            self.reset_count()
 
         elif max(self.hand_count.values()) == self.alpha:
             output = max(self.hand_count, key=self.hand_count.get)
-            self.reset_count
+            self.reset_count()
         
         return output
 
