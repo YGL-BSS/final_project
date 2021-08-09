@@ -12,17 +12,20 @@ class Gesture2Command:
         self.ppt_path = os.path.join(os.getcwd(), 'TestPPT') 
         self.total_page = self.choosePPT()
         self.all_ppt = [os.path.join(self.ppt_path, i) for i in self.ppt_list]
+        self.open_slide = False
 
     def choosePPT(self):
-        self.ppt_list = os.listdir(self.ppt_path)
+        self.ppt_list = [str(i) + '.png' for i in sorted([int(i.split('.')[0]) for i in os.listdir(self.ppt_path)])]
         return len(self.ppt_list)
 
     def openFirstSlide(self):
-        options = Options()
-        options.add_argument('--start-maximized')
-        self.main_driver = webdriver.Chrome(executable_path="./chromedriver", options = options)
-        self.current_page = 0
-        self.main_driver.get(self.all_ppt[self.current_page])
+        if self.open_slide == False:
+            self.open_slide = True
+            options = Options()
+            options.add_argument('--start-maximized')
+            self.main_driver = webdriver.Chrome(executable_path="./chromedriver", options = options)
+            self.current_page = 0
+            self.main_driver.get(self.all_ppt[self.current_page])
 
     def nextSlide(self):
         if self.current_page < self.total_page - 1:
@@ -52,8 +55,10 @@ class Gesture2Command:
         self.link_driver.quit()
 
     def endSlide(self):
-        self.main_driver.close()
-    
+        if open_slide:
+            self.main_driver.close()
+            self.open_slide = False
+        
     def activate_command(self, gesture):
         self.gesture = gesture
         if self.gesture == Gesture2Command.gestures[0]:
