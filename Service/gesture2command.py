@@ -55,7 +55,7 @@ class Gesture2Command:
         self.link_driver.quit()
 
     def endSlide(self):
-        if open_slide:
+        if self.open_slide:
             self.main_driver.close()
             self.open_slide = False
         
