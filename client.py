@@ -4,6 +4,7 @@ https://walkinpcm.blogspot.com/2016/05/python-python-opencv-tcp-socket-image.htm
 '''
 import socket
 import numpy as np
+import base64
 
 from pathlib import Path
 import sys
@@ -24,6 +25,26 @@ from utils.torch_utils import select_device, time_sync
 
 # custom module
 from utils.ppt import output_to_detect, EncodeInput, Gesture2Command
+
+class TimeCheck():
+    def __init__(self):
+        self.start = '0'
+        self.end = '0'
+        self.t_start = time.time()
+        self.t_end = time.time()
+
+    def initial(self, tag='start'):
+        print()
+        self.start = tag
+        self.t_start = time.time()
+    
+    def check(self, tag='end', out=True):
+        self.end = tag
+        self.t_end = time.time()
+        if out:
+            time_interval = self.t_end - self.t_start
+            print(f'[{self.start} ~ {self.end}] {time_interval:5.2f} sec', end='\t')
+            return time_interval
 
 @torch.no_grad()
 def run(weights='runs/train/v5l_results2/weights/best.pt'):
@@ -51,7 +72,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     # # OpenCV를 이용해서 webcam으로부터 이미지 추출
     # cam = cv2.VideoCapture(0)
-    # encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
     # while True:
     #     success, frame = cam.read()
     #     if not success:
@@ -83,11 +104,11 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
     w = weights
     stride, names = 64, [f'class{i}' for i in range(10000)]
 
-    model = attempt_load(w, map_location=device)
-    stride = int(model.stride.max())
+    # model = attempt_load(w, map_location=device)
+    # stride = int(model.stride.max())
     names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
-    if half:
-        model.half()
+    # if half:
+        # model.half()
     
     # Resize image
     imgsz = check_img_size(imgsz, s=stride)
@@ -100,16 +121,19 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     video_path, video_writer = [None] * bs, [None] * bs
 
-    # Run Interface
-    if device.type != 'cpu':
-        model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters()))) # run once
+    # # Run Interface
+    # if device.type != 'cpu':
+    #     model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters()))) # run once
     
     # custom process
-    EI = EncodeInput(50)
-    G2C = Gesture2Command()
+    # EI = EncodeInput(50)
+    # G2C = Gesture2Command()
 
-    t0 = time.time()
+    # t0 = time.time()
+    tc = TimeCheck()
     for path, img, im0s, video_cap in dataset:
+        tc.initial('0')
+        # print(img[0,:,0,0], im0s[0][0, 0, :])
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()   # uint8 to fp16/32
         img /= 255.0                                # normalize : 0~255 to 0~1
@@ -119,30 +143,20 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
         # ======================
         # 보낼 string 데이터 만들기
+        tc.check('1')
         stringImg_shape = ' '.join([str(i) for i in img.shape])
-        stringImg = img.numpy().tobytes()      # tensor -> bytes
-
-        # stringIm0_shape = f"{len(im0s)} {' '.join([str(i) for i in im0s[0].shape])}"
-        # stringIm0 = np.array(im0s).tobytes()    # list -> bytes
-        stringIm0s_length = str(len(im0s))
-        stringIm0s = []
-        for im0 in im0s:
-            _, imgencode = cv2.imencode('.jpg', im0, encode_param)
-            stringIm0s.append(np.array(imgencode).tostring())
+        # stringImg = img.cpu().numpy().tobytes()      # tensor -> bytes
+        stringImg = base64.b64encode(img.cpu().numpy().tobytes())
 
         # 송신
+        tc.check('2')
         sock.send(str(len(stringImg)).ljust(16).encode())
+        tc.check('3')
         sock.send(stringImg_shape.ljust(16).encode())
+        tc.check('4')
         sock.send(stringImg)
-
-        sock.send(stringIm0s_length.ljust(10).encode())
-        for stringIm0 in stringIm0s:
-            sock.send(str(len(stringIm0)).ljust(16).encode())
-            sock.send(stringIm0)
-        # sock.send(str(len(stringIm0)).ljust(16).encode())
-        # sock.send(stringIm0_shape.ljust(16).encode())
-        # sock.send(stringIm0)
-
+        tc.check('5')
+        
 
     #     # string 형태로 인코딩한 이미지를 socket을 통해서 전송
     #     sock.send(str(len(stringData)).ljust(16).encode())   # 좌로 밀기
