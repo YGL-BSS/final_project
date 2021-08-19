@@ -1,6 +1,5 @@
 '''
-리모컨 쪽 실행파일
-https://walkinpcm.blogspot.com/2016/05/python-python-opencv-tcp-socket-image.html
+server 실행파일 test용
 '''
 import socket
 from utils.augmentations import letterbox
@@ -41,7 +40,7 @@ def recvall(sock, count):
     return buf
 
 @torch.no_grad()
-def run(weights='runs/train/v5l_results2/weights/best.pt'):
+def run(weights='runs/train/v5s_results22/weights/best.pt'):
     imgsz = 640
     conf_th = 0.45
     iou_th = 0.45
@@ -52,7 +51,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     # 수신에 사용될 내 ip와 port 번호
     TCP_IP = socket.gethostbyname(socket.gethostname())
-    TCP_IP = '172.16.6.181'
+    # TCP_IP = '172.16.6.181'
     TCP_PORT = 5001
     print('Server IP    :', TCP_IP)
     print('Server PORT  :', TCP_PORT)
@@ -104,14 +103,20 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
         t1 = time_sync()
         tc = TimeCheck()
         tc.initial('receive')
-        length = recvall(sock_conn, 16)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
-        if type(length) == type(None):
+
+        t_send = float(recvall(sock_conn, 16))
+        if type(t_send) == type(None):
             break
+        length = recvall(sock_conn, 16)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
         tc.check('1')
         strData_shape = recvall(sock_conn, 16)
         tc.check('2')
         strData = recvall(sock_conn, int(length))
         tc.check('3')
+
+        # 핑 계산
+        t_recv = float(f'{time.time():.4f}')
+        ping = t_recv - t_send
 
         # decode
         im0_temp = cv2.imdecode(np.frombuffer(strData, dtype='uint8'), 1)
@@ -187,8 +192,8 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
         # show fps
         cv2.putText(
-            im0, f'FPS: {1/(t2 - t1):.2f}', (10, 50),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2
+            im0, f'FPS:{1/(t2 - t1):.2f} ping:{ping:.2f}', (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 1
         )
         tc.check('7')
         # Stream
