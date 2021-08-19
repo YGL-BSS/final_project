@@ -62,7 +62,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     # model = attempt_load(w, map_location=device)
     # stride = int(model.stride.max())
-    names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
+    # names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
     # if half:
         # model.half()
     
@@ -80,15 +80,14 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
     # t0 = time.time()
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
     for path, img, im0s, video_cap in dataset:
-        tc = TimeCheck()
+        tc = TimeCheck(out=False)
         tc.initial('encode')
 
         retval, im0_enc = cv2.imencode('.jpg', im0s[0], encode_param)   # frame -> encoded frame
         strData = np.array(im0_enc).tobytes()                           # encoded frame -> bytes
-        # strData_shape = ' '.join([str(i) for i in im0s[0].shape])
+        tc.check('done')
 
         # 송신
-        tc.check('0')
         tc.initial('send')
         sock.send(f'{time.time():.4f}'.ljust(16).encode())
         # tc.check('0')
@@ -97,7 +96,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
         # sock.send(strData_shape.ljust(16).encode())
         # tc.check('2')
         sock.send(strData)
-        tc.check('3')
+        tc.check('done')
 
         # ======================
         press = cv2.waitKey(1)

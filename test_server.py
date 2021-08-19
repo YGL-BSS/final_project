@@ -42,7 +42,7 @@ def recvall(sock, count):
 @torch.no_grad()
 def run(weights='runs/train/v5s_results22/weights/best.pt'):
     imgsz = 640
-    conf_th = 0.45
+    conf_th = 0.55
     iou_th = 0.45
     max_detect = 1000
     device = ''
@@ -100,23 +100,18 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
     while True:
         ################## im0를 받아오는 코드 ###################
         # 소켓에서 데이터 받기
-        t1 = time_sync()
-        tc = TimeCheck()
+        tc = TimeCheck(out=False)
         tc.initial('receive')
 
-        t_send = float(recvall(sock_conn, 16))
+        t_send = float(recvall(sock_conn, 16))          # 전송 시간 수신
         if type(t_send) == type(None):
             break
-        length = recvall(sock_conn, 16)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
-        # tc.check('1')
-        # strData_shape = recvall(sock_conn, 16)
-        # tc.check('2')
-        strData = recvall(sock_conn, int(length))
-        tc.check('3')
+        length = recvall(sock_conn, 16)                 # 이미지 길이 수신
+        strData = recvall(sock_conn, int(length))       # 이미지 수신
 
         # 핑 계산
         t_recv = float(f'{time.time():.4f}')
-        ping = (t_recv - t_send) * 1000         # ping [ms]
+        ping = (t_recv - t_send) * 1000                 # ping [ms]
 
         # decode
         im0_temp = cv2.imdecode(np.frombuffer(strData, dtype='uint8'), 1)
@@ -134,26 +129,26 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         if len(img.shape) == 3:
             img = img[None] # expand for batch dim
 
-        pred = model(img, augment=False, visualize=False)[0]
-        tc.check('5')
+        pred = model(img, augment=False, visualize=False)[0]        # bbox 예측하기
 
         # NMS
         pred = non_max_suppression(pred, conf_thres=conf_th, iou_thres=iou_th, classes=None, agnostic=False, max_det=max_detect)
-        t2 = time_sync()
-        # tc.check('6')
+        t_process = tc.check('0', ret=True)
 
         # Detected gesture list
         detected_list = []
         detected_num = []
+        detected_log = ''
 
         for i, detect in enumerate(pred):
             # p, s, im0, frame = path[i], f'{i}: ', im0s[i].copy(), dataset.count
             # p = Path(p) # to Path
             # save_path
             # txt_path
-            s, im0 = f'{i}: ', im0s[i].copy()
+            # s, im0 = f'{i}: ', im0s[i].copy()
+            im0 = im0s[i].copy()
 
-            s += '%gx%g ' % img.shape[2:]
+            # s += '%gx%g ' % img.shape[2:]
             gain = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalize gain whwh
             # im_cp = im0.copy()    # for save_crop
 
@@ -164,7 +159,8 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
                 # Print results
                 for c in detect[:, -1].unique():
                     n = (detect[:, -1] == c).sum()  # detections per class
-                    s += f'{n} {names[int(c)]} '    # add to string
+                    # s += f'{n} {names[int(c)]} '    # add to string
+                    detected_log += f'{int(c):2d} {n:2d} '
                     detected_num.append(f'{n}')
                     detected_list.append(names[int(c)])
 
@@ -174,28 +170,29 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
                     label = f'{names[c]} {conf:.2f}'
                     plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=3)
 
-        # Print time (inference + NMS)
-        # print(f'{s} Done. ({t2 - t1:.3f}s)', end='\t')
+        # # Get bbox list                     # 전유상 팀원 코드 추가
+        # hand_detected = []
+        # for n, label in zip(detected_num, detected_list):
+        #     hand_detected += [label] * int(n)
 
-        # Get bbox list                     # 전유상 팀원 코드 추가
-        hand_detected = []
-        for n, label in zip(detected_num, detected_list):
-            hand_detected += [label] * int(n)
+        # # preprocess detected hand signal   # 정민형 팀원 코드 추가
+        # cmd = EI.encode(hand_detected)
 
-        # preprocess detected hand signal   # 정민형 팀원 코드 추가
-        cmd = EI.encode(hand_detected)
+        # # Action according to the command   # 박도현 팀원 코드 추가
+        # if cmd:
+        #     print(cmd)
+        #     G2C.activate_command(cmd)
 
-        # Action according to the command   # 박도현 팀원 코드 추가
-        if cmd:
-            print(cmd)
-            G2C.activate_command(cmd)
+        # test code
+        print(detected_log)
 
         # show fps
+        info_text = f'FPS:{1/(t2 - t1):.2f} ping:{ping:.2f}\n' + '%gx%g ' % img.shape[2:]
         cv2.putText(
-            im0, f'FPS:{1/(t2 - t1):.2f} ping:{ping:.2f}', (10, 50),
+            im0, info_text, (10, 50),
             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1
         )
-        tc.check('7')
+
         # Stream
         cv2.imshow('webcam', im0)
         cv2.waitKey(1)
