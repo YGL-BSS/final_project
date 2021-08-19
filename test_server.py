@@ -108,15 +108,15 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         if type(t_send) == type(None):
             break
         length = recvall(sock_conn, 16)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
-        tc.check('1')
-        strData_shape = recvall(sock_conn, 16)
-        tc.check('2')
+        # tc.check('1')
+        # strData_shape = recvall(sock_conn, 16)
+        # tc.check('2')
         strData = recvall(sock_conn, int(length))
         tc.check('3')
 
         # 핑 계산
         t_recv = float(f'{time.time():.4f}')
-        ping = t_recv - t_send
+        ping = (t_recv - t_send) * 1000         # ping [ms]
 
         # decode
         im0_temp = cv2.imdecode(np.frombuffer(strData, dtype='uint8'), 1)
@@ -140,7 +140,7 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         # NMS
         pred = non_max_suppression(pred, conf_thres=conf_th, iou_thres=iou_th, classes=None, agnostic=False, max_det=max_detect)
         t2 = time_sync()
-        tc.check('6')
+        # tc.check('6')
 
         # Detected gesture list
         detected_list = []
@@ -193,7 +193,7 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         # show fps
         cv2.putText(
             im0, f'FPS:{1/(t2 - t1):.2f} ping:{ping:.2f}', (10, 50),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 1
+            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1
         )
         tc.check('7')
         # Stream
