@@ -3,6 +3,7 @@
 https://walkinpcm.blogspot.com/2016/05/python-python-opencv-tcp-socket-image.html
 '''
 import socket
+from utils.augmentations import letterbox
 import numpy as np
 import base64
 
@@ -25,6 +26,7 @@ from utils.torch_utils import select_device, time_sync
 
 # custom module
 from utils.ppt import output_to_detect, EncodeInput, Gesture2Command
+from utils.custom_general import TimeCheck
 
 # socket 수신 버퍼(인코딩된 이미지)를 읽어서 반환하는 함수
 def recvall(sock, count):
@@ -37,26 +39,6 @@ def recvall(sock, count):
         count -= len(newbuf)
     
     return buf
-
-class TimeCheck():
-    def __init__(self):
-        self.start = '0'
-        self.end = '0'
-        self.t_start = time.time()
-        self.t_end = time.time()
-
-    def initial(self, tag='start'):
-        print()
-        self.start = tag
-        self.t_start = time.time()
-
-    def check(self, tag='end', out=True):
-        self.end = tag
-        self.t_end = time.time()
-        if out:
-            time_interval = self.t_end - self.t_start
-            print(f'[{self.start} ~ {self.end}] {time_interval:5.2f} sec', end='\t')
-            return time_interval
 
 @torch.no_grad()
 def run(weights='runs/train/v5l_results2/weights/best.pt'):
@@ -115,61 +97,28 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
     EI = EncodeInput(50)
     G2C = Gesture2Command()
 
-    # t0 = time.time()
-
-    # ==================================
-
-    tc = TimeCheck()
     # string 형태의 이미지를 수신받아서 이미지로 변환하고 화면에 출력
     while True:
-        # # img
-        # length = recvall(sock_conn, 16)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
-        # if type(length) == type(None):
-        #     break
-        # stringImg_shape = recvall(sock_conn, 16)
-        # stringImg = recvall(sock_conn, int(length))
-        # #img = torch.tensor(np.frombuffer(stringImg, dtype=np.float32))    # string -> tensor
-        # img = np.frombuffer(stringImg, dtype=np.float32)    # string -> tensor
-        # #print(img.shape, stringImg_shape.decode())
-        # img = img.reshape(tuple([int(i) for i in stringImg_shape.decode().strip().split()]))
-
-        # # im0s
-        # stringim0s_length = recvall(sock_conn, 10)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
-        # stringim0s_length = int(stringim0s_length.decode().strip())
-        # im0s = []
-        # for _ in range(stringim0s_length):
-        #     length = recvall(sock_conn, 16)
-        #     stringIm0 = recvall(sock_conn, int(length))
-        #     im0s.append(
-        #         cv2.imdecode(np.fromstring(stringIm0, dtype='uint8'), 1)
-        #     )
-        
+        ################## im0를 받아오는 코드 ###################
         # 소켓에서 데이터 받기
-        tc.initial('0')
+        tc = TimeCheck()
+        tc.initial('receive')
         length = recvall(sock_conn, 16)     # 길이 16의 데이터 먼저 수신 : 이미지 길이를 먼저 수신
         if type(length) == type(None):
             break
         tc.check('1')
-        stringImg_shape = recvall(sock_conn, 16)
+        strData_shape = recvall(sock_conn, 16)
         tc.check('2')
-        stringImg = recvall(sock_conn, int(length))
+        strData = recvall(sock_conn, int(length))
         tc.check('3')
 
-        # 받은 데이터를 통해 img, im0s 복구하기
-        img_shape = tuple([int(n) for n in stringImg_shape.decode().strip().split()])
-        # img = np.frombuffer(stringImg, dtype=np.float32).copy()    # string -> tensor
-        img = np.frombuffer(base64.b64decode(stringImg), dtype=np.float32).copy()
-        img *= 255.0
-        img = img.reshape(img_shape)
-        img = img.astype('uint8')
-        
-        im0_temp = img.copy()
-        im0_temp = im0_temp.transpose((0, 2, 3, 1))     # (1, 3, 480, 640) -> (1, 480, 640, 3)
-        im0_temp = im0_temp[..., ::-1]                  # RGB -> BGR
-        im0_temp = im0_temp.reshape(im0_temp.shape[-3:])
+        # decode
+        im0_temp = cv2.imdecode(np.frombuffer(strData, dtype='uint8'), 1)
         im0s = [im0_temp]
-        # print(img[0,:,0,0], im0s[0][0,0,:])
-        tc.check('4')
+        img = np.stack(im0s, 0)
+        img = img[..., ::-1].transpose((0, 3, 1, 2))
+        img = np.ascontiguousarray(img)
+        ########################################################
 
         # (구) 코드 진행
         img = torch.from_numpy(img).to(device)
@@ -179,7 +128,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
         if len(img.shape) == 3:
             img = img[None] # expand for batch dim
 
-        t1 = time_sync() 
+        t1 = time_sync()
         pred = model(img, augment=False, visualize=False)[0]
         tc.check('5')
 
