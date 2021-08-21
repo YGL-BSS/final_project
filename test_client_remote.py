@@ -79,7 +79,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
     FPS = 30
-    tc_fps = TimeCheck(out=True)    # out=True면 time debugging 가능
+    tc_fps = TimeCheck(out=False)    # out=True면 time debugging 가능
     delay = 10000
     for path, img, im0s, video_cap in dataset:
         delay = tc_fps.check('0', ret=True)

@@ -5,7 +5,11 @@ import socket
 import os
 from pathlib import Path
 
+import numpy as np
+import cv2
+
 from utils.torch_utils import time_sync
+from utils.custom_general import TimeCheck
 
 # socket 수신 버퍼(인코딩된 이미지)를 읽어서 반환하는 함수
 def recvall(sock, count):
@@ -37,21 +41,26 @@ print('접속 IP :', addr)
 while True:
 
     # 데이터 수신
-    t_clnt_remote = recvall(sock_conn, 16)
-    if type(t_clnt_remote) == type(None):
+    tc = TimeCheck(out=False)
+    tc.initial('receive')
+    try:
+        t_server = float(recvall(sock_conn, 16))
+        t_clnt_remote = float(recvall(sock_conn, 16))
+        length = recvall(sock_conn, 16)
+        gestures = recvall(sock_conn, int(length))
+    except:
+        print('break')
         break
-    else:
-        t_clnt_remote = float(t_clnt_remote)
-    t_server = float(recvall(sock_conn, 16))
-    gesture_list = recvall(sock_conn, 64)
 
     # ping 계산
-    t_clnt_obj = float(f'{time_sync():.4f}')
+    t_clnt_obj = time_sync()
     ping_total = t_clnt_obj - t_clnt_remote
     ping_server = t_clnt_obj - t_server
 
     # 제스쳐 리스트 확인
-
+    gestures = np.frombuffer(gestures, dtype=int)
+    if gestures.sum() > 0:
+        print(f'[total-{ping_total:7.2f}sec] ' + f'[total-{ping_server:7.2f}sec]', gestures)
 
     # 수신된 제스쳐에 따라 로직 진행
 
