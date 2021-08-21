@@ -1,21 +1,30 @@
-# YGL 2기 3팀 Final Project
+# YGL-BSS PROJECT
 
 ```
 파일 명 맨 앞에 test 혹은 test_가 붙은 파일은 테스트용 파일입니다.
 ```
 
 ## Topic
-* hand gesture recognition 을 통한 패턴 비밀번호 인식 구현
+* hand gesture recognition을 통한 프레젠테이션 제어
 
-## Team
+## Team Members
 * 전유상
 * 박도현
 * 정민형
 
-## Description 1 : Before training
-#### 1. 학습 데이터 생성 단계
+# How to Use
 
-사용자가 원하는 손가락 모양을 **패스워드 제스쳐**로 지정한다. 이때 모델을 학습하기 위하여 해당 제스쳐를 취한 영상을 저장한다. (추후 실시간 영상에서 일부를 취하여 저장하는 방향을 개선 예정)
+## Description 1 : Anaconda setting
+
+아나콘다 가상환경에서 실행한다.
+
+`ready.bat` 파일을 실행해서 필요한 라이브러리를 설치하고, pretrained model을 다운받는다.
+
+---
+
+```
+아래는 수정중...
+```
 
 이 영상 데이터를 기반으로 모델이 학습된다. 
 

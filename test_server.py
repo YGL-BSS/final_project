@@ -25,7 +25,7 @@ from utils.torch_utils import select_device, time_sync
 
 # custom module
 from utils.ppt import output_to_detect, EncodeInput, Gesture2Command
-from utils.custom_general import TimeCheck
+from utils.custom_general import TimeCheck, GestureBuffer
 
 # socket 수신 버퍼(인코딩된 이미지)를 읽어서 반환하는 함수
 def recvall(sock, count):
@@ -95,6 +95,7 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
     # custom process
     EI = EncodeInput(50)
     G2C = Gesture2Command()
+    BF = GestureBuffer(names=names)
 
     # string 형태의 이미지를 수신받아서 이미지로 변환하고 화면에 출력
     while True:
@@ -102,16 +103,15 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         # 소켓에서 데이터 받기
         tc = TimeCheck(out=False)
         tc.initial('receive')
-
-        t_send = float(recvall(sock_conn, 16))          # 전송 시간 수신
-        if type(t_send) == type(None):
+        try:
+            t_send = float(recvall(sock_conn, 16))      # 전송 시간 수신
+        except:
             break
         length = recvall(sock_conn, 16)                 # 이미지 길이 수신
         strData = recvall(sock_conn, int(length))       # 이미지 수신
 
         # 핑 계산
-        t_recv = float(f'{time.time():.4f}')
-        ping = (t_recv - t_send) * 1000                 # ping [ms]
+        ping = (float(f'{time_sync():.4f}') - t_send) * 1000                 # ping [ms]
 
         # decode
         im0_temp = cv2.imdecode(np.frombuffer(strData, dtype='uint8'), 1)
@@ -137,8 +137,8 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
 
         # Detected gesture list
         detected_list = []
-        detected_num = []
-        detected_log = ''
+        detected_num = [0] * len(names)     # names와 대응하는 list
+        # detected_data = {i:[name, 0] for i, name in enumerate(names)}
 
         for i, detect in enumerate(pred):
             # p, s, im0, frame = path[i], f'{i}: ', im0s[i].copy(), dataset.count
@@ -160,9 +160,10 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
                 for c in detect[:, -1].unique():
                     n = (detect[:, -1] == c).sum()  # detections per class
                     # s += f'{n} {names[int(c)]} '    # add to string
-                    detected_log += f'{int(c):2d} {n:2d} '
-                    detected_num.append(f'{n}')
-                    detected_list.append(names[int(c)])
+                    # detected_log += f'{int(c):2d} {n:2d} '
+                    detected_num[int(c)] += int(n)
+                    # detected_list.append(names[int(c)])
+                    # detected_data[int(c)][1] += int(n)
 
                 # Write results
                 for *xyxy, conf, cls in reversed(detect):
@@ -182,12 +183,13 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         # if cmd:
         #     print(cmd)
         #     G2C.activate_command(cmd)
-
-        # test code
-        print(detected_log)
+        BF.update_buf(detected_num, t_send)
+        detected_action = BF.get_action()
+        if detected_action.sum() > 0:
+            print(detected_action)
 
         # show fps
-        info_text = f'FPS:{1/(t2 - t1):.2f} ping:{ping:.2f}\n' + '%gx%g ' % img.shape[2:]
+        info_text = f'FPS:{1/t_process:>6.2f} ping:{ping:>8.2f}  ' + '%gx%g ' % img.shape[2:]
         cv2.putText(
             im0, info_text, (10, 50),
             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1

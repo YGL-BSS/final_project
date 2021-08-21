@@ -77,7 +77,6 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     video_path, video_writer = [None] * bs, [None] * bs
 
-    # t0 = time.time()
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
     FPS = 30
     tc_fps = TimeCheck(out=True)    # out=True면 time debugging 가능
@@ -96,7 +95,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
             # 송신
             tc.initial('send')
-            sock.send(f'{time.time():.4f}'.ljust(16).encode())
+            sock.send(f'{time_sync():.4f}'.ljust(16).encode())
             sock.send(str(len(strData)).ljust(16).encode())
             sock.send(strData)
             tc.check('done')

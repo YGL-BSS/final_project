@@ -1,4 +1,6 @@
 import time
+import numpy as np
+
 from utils.torch_utils import time_sync
 
 
@@ -25,3 +27,60 @@ class TimeCheck():
             print(f'[{self.start} ~ {self.end}] {time_interval:5.2f} sec', end='\t')
         if ret:
             return time_interval
+
+
+class GestureBuffer():
+
+    def __init__(self, names):
+        self._names = names
+        self.log_detect = np.empty((0, len(names)), int)
+        self.log_time = np.empty((0, 1), float)
+        self._now = time.time()
+        self._buf_delay = 1  # 1 sec 동안의 데이터만 저장
+
+    def update_buf(self, detect_num, t_send):
+        '''
+        
+        '''
+        log_detect = self.log_detect
+        log_time = self.log_time
+        log_detect = np.append(log_detect, np.array([detect_num]), axis=0)
+        log_time = np.append(log_time, np.array([[t_send]]), axis=0)
+
+        # 현재 시간과 비교해서 날릴 내용은 날리기
+        now = time.time()
+        mask = np.where(now - log_time < self._buf_delay)[0]
+        log_detect = log_detect[mask]
+        log_time = log_time[mask]
+
+        # 저장
+        self.log_detect = log_detect
+        self.log_time = log_time
+        # self._now = now
+
+    def get_action(self):
+        '''
+        인식된 action list 반환하기
+        '''
+        buf = self.log_detect
+        detected_action = np.array([0] * len(self._names))
+        now = time.time()
+
+        if now - self._now >= self._buf_delay:
+            self._now = now
+
+            if len(buf) >= 1:
+                most_cnt = 0
+                for action in np.unique(buf, axis=0):
+                    cnt = self._find_same_row(buf, action)
+                    if cnt > most_cnt:
+                        detected_action = action
+        return detected_action
+
+    def _find_same_row(self, arr_2d, target_row):
+        '''
+        arr_2d의 row 중에서 target_row와 같은 row의 개수를 반환
+        '''
+        # MSE에서 오차 계산을 squared error로 하는 것을 응용
+        return (((arr_2d - target_row) ** 2).sum(axis=1) == 0).sum()
+
