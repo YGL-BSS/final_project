@@ -63,6 +63,17 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
     sock_conn, addr = sock.accept()
     print('접속 IP :', addr)
 
+    # 연결할 client_obj의 ip주소
+    TCP_IP2 = input('Server IP (client_obj) >> ')
+    TCP_PORT2 = 5002
+    print('Server IP    :', TCP_IP2)
+    print('Server PORT  :', TCP_PORT2)
+
+    # 송신을 위한 socket 생성
+    sock2 = socket.socket()
+    sock2.connect((TCP_IP2, TCP_PORT2))
+    print(f'Connected to {TCP_IP2}:{TCP_PORT2}')
+
     # Initialize
     set_logging()
     device = select_device(device)
@@ -105,10 +116,10 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         tc.initial('receive')
         try:
             t_send = float(recvall(sock_conn, 16))      # 전송 시간 수신
+            length = recvall(sock_conn, 16)                 # 이미지 길이 수신
+            strData = recvall(sock_conn, int(length))       # 이미지 수신
         except:
             break
-        length = recvall(sock_conn, 16)                 # 이미지 길이 수신
-        strData = recvall(sock_conn, int(length))       # 이미지 수신
 
         # 핑 계산
         ping = (float(f'{time_sync():.4f}') - t_send) * 1000                 # ping [ms]
@@ -187,6 +198,13 @@ def run(weights='runs/train/v5s_results22/weights/best.pt'):
         detected_action = BF.get_action()
         if detected_action.sum() > 0:
             print(detected_action)
+        
+        # send result to client_obj
+        detected_action = detected_action.tobytes()                 # encode
+        sock2.send(f'{time_sync():.4f}'.ljust(16).encode())
+        sock2.send(f'{t_send:.4f}'.ljust(16).encode())
+        sock2.send(str(len(detected_action)).ljust(16).encode())
+        sock2.send(detected_action)
 
         # show fps
         info_text = f'FPS:{1/t_process:>6.2f} ping:{ping:>8.2f}  ' + '%gx%g ' % img.shape[2:]
