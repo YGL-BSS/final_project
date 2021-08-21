@@ -79,24 +79,27 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     # t0 = time.time()
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+    FPS = 30
+    tc_fps = TimeCheck(out=True)    # out=True면 time debugging 가능
+    delay = 10000
     for path, img, im0s, video_cap in dataset:
-        tc = TimeCheck(out=False)
-        tc.initial('encode')
+        delay = tc_fps.check('0', ret=True)
+        print()
+        if delay > 1./FPS:
+            tc_fps.initial()
+            tc = TimeCheck(out=False)
+            tc.initial('encode')
 
-        retval, im0_enc = cv2.imencode('.jpg', im0s[0], encode_param)   # frame -> encoded frame
-        strData = np.array(im0_enc).tobytes()                           # encoded frame -> bytes
-        tc.check('done')
+            retval, im0_enc = cv2.imencode('.jpg', im0s[0], encode_param)   # frame -> encoded frame
+            strData = np.array(im0_enc).tobytes()                           # encoded frame -> bytes
+            tc.check('done')
 
-        # 송신
-        tc.initial('send')
-        sock.send(f'{time.time():.4f}'.ljust(16).encode())
-        # tc.check('0')
-        sock.send(str(len(strData)).ljust(16).encode())
-        # tc.check('1')
-        # sock.send(strData_shape.ljust(16).encode())
-        # tc.check('2')
-        sock.send(strData)
-        tc.check('done')
+            # 송신
+            tc.initial('send')
+            sock.send(f'{time.time():.4f}'.ljust(16).encode())
+            sock.send(str(len(strData)).ljust(16).encode())
+            sock.send(strData)
+            tc.check('done')
 
         # ======================
         press = cv2.waitKey(1)
