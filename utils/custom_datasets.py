@@ -38,3 +38,10 @@ def change_hsv(image):
     new_s = s + random.choice(range(5,20))
     new_img = np.array([new_h, new_s, v]).transpose((1,2,0))
     return cv2.cvtColor(new_img, cv2.COLOR_HSV2BGR)
+
+
+def resize_shape(image, size=640):
+    '''
+    정해진 사이즈로 image 변환
+    '''
+    return cv2.resize(image, dsize=(size, size), interpolation=cv2.INTER_AREA)

@@ -20,8 +20,9 @@ import os
 import cv2
 import random
 import time
+from tqdm import tqdm
 
-from utils.custom_datasets import flip_vertical_img, flip_vertical_coord, change_brightness, change_hsv
+from utils.custom_datasets import flip_vertical_img, flip_vertical_coord, change_brightness, change_hsv, resize_shape
 
 FILE = Path(__file__).absolute()
 sys.path.append(FILE.parents[0].as_posix())  # add this directory to path
@@ -75,7 +76,7 @@ def add_vertical_flip(dir_target):
     labels = dir_target / 'labels'
     names = [n.stem for n in images.iterdir()]
 
-    for name in names:
+    for name in tqdm(names, desc=f'flipping [{dir_target.name}]'):
 
         # 기존 이미지, 좌표 불러오기
         img = cv2.imread(str(images / f'{name}.jpg'))
@@ -95,7 +96,8 @@ def add_vertical_flip(dir_target):
                 break
         
         # 좌우 반전 이미지 저장
-        cv2.imwrite(str(images / f'{name}_flip.jpg'), new_img_flip)
+        # cv2.imwrite(str(images / f'{name}_flip.jpg'), new_img_flip)
+        cv2.imwrite(str(images / f'{name}_flip.jpg'), resize_shape(new_img_flip))   # 640x640으로 변환 후 저장
         # 좌우 반전 좌표 저장
         with open(labels / f'{name}_flip.txt', 'w') as f:
                 new_coords_flip = '\n'.join(new_coords_flip)
@@ -114,7 +116,7 @@ def pop_rice(dir_target, multi_num):
     # 밝기 조절 여부, 색상+채도 조절 여부
     trans = [[False,True], [True,False], [True,True]]
 
-    for name in names:
+    for name in tqdm(names, desc=f'pop rice [{dir_target.name}]'):
 
         img = cv2.imread(str(images / f'{name}.jpg'))
         with open(labels / f'{name}.txt', 'r') as f:
@@ -132,25 +134,13 @@ def pop_rice(dir_target, multi_num):
             if is_hsv:
                 new_img = change_hsv(new_img)
             
-            # # 좌우 반전 이미지 생성
-            # new_img_flip = new_img.copy()
-            # new_coords_flip = new_coords
-            # for i, new_coord in enumerate(new_coords):
-            #     try:
-            #         new_coords_flip[i] = flip_vertical_coord(new_coord)
-            #     except:
-            #         break
-            
             # 새로운 이미지 저장
-            cv2.imwrite(str(images / f'{name}_trans{i}.jpg'), new_img)
-            # cv2.imwrite(str(images / f'{name}_flip_trans{i}.jpg'), new_img_flip)
+            # cv2.imwrite(str(images / f'{name}_trans{i}.jpg'), new_img)
+            cv2.imwrite(str(images / f'{name}_trans{i}.jpg'), resize_shape(new_img))    # 640x640으로 변환 후 저장
             # 새로운 좌표 저장
             with open(labels / f'{name}_trans{i}.txt', 'w') as f:
                 new_coords = '\n'.join(new_coords)
                 f.write(new_coords)
-            # with open(labels / f'{name}_flip_trans{i}.txt', 'w') as f:
-            #     new_coords_flip = '\n'.join(new_coords_flip)
-            #     f.write(new_coords_flip)
 
 
 def parse_opt(known=False):
@@ -190,18 +180,25 @@ def main(opt):
     split_data(DATASET, NEWDATA)
 
     # train, valid, test 폴더의 이미지들을 좌우반전하여 추가하기
-    print('좌우 반전 추가 중...', end='')
+    print('좌우 반전 추가 시작!')
     add_vertical_flip(NEWDATA / 'train')
     add_vertical_flip(NEWDATA / 'valid')
     add_vertical_flip(NEWDATA / 'test')
-    print('완료!')
+    print('좌우 반전 추가 완료!\n')
 
     # train, valid, test 폴더의 이미지들을 각각 augmentation으로 뻥튀기하기
-    print(opt.multi_num, '배로 뻥튀기 중...', end='')
+    print(opt.multi_num, '배로 뻥튀기 시작!')
     pop_rice(NEWDATA / 'train', opt.multi_num)
     pop_rice(NEWDATA / 'valid', opt.multi_num)
     pop_rice(NEWDATA / 'test', opt.multi_num)
     print('완료!')
+
+    # data.yaml 파일 만들기
+    with open(NEWDATA / 'data.yaml', 'w') as f:
+        f.write(f'train: ./data/{opt.name}/train\n')
+        f.write(f'val: ./data/{opt.name}/valid\n\n')
+        f.write(f'nc: 8\n')
+        f.write(f"names: ['0', '1', '2', '3', '4', '5', '6', '7']")
 
 if __name__ == '__main__':
     opt = parse_opt()
