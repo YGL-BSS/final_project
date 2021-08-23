@@ -33,7 +33,7 @@ DATA = FILE.parents[0] / 'data'
 # print(FILE)
 # print(DATASETS)
 
-def split_data(dir_target, dir_save, split_rate=(0.8, 0.1, 0.1)):
+def split_data(dir_target, dir_save, split_rate=(0.8, 0.1, 0.1), flip=False):
     '''
     dir_target 디렉토리 안의 images, labels 안의 파일들을
     train, valid, test로 나누어서 dir_save 디렉토리에 저장하는 코드
@@ -58,13 +58,21 @@ def split_data(dir_target, dir_save, split_rate=(0.8, 0.1, 0.1)):
         # create directory
         if not (dir_save / folder_split).exists():
             (dir_save / folder_split).mkdir()
-        for name in names_split:
+        i = 0
+        for name in tqdm(names_split, desc=f'split [{folder_split}]'):
             new_images = dir_save / folder_split / 'images'
             new_labels = dir_save / folder_split / 'labels'
             if not new_images.exists(): new_images.mkdir()
             if not new_labels.exists(): new_labels.mkdir()
-            shutil.copy(images / f'{name}.jpg', new_images / f'{name}.jpg')
+            # shutil.copy(images / f'{name}.jpg', new_images / f'{name}.jpg')
+            img = cv2.imread(str(images / f'{name}.jpg'))
+            if flip and (i%2 == 1):
+                img = flip_vertical_img(img)                                        # 홀수번째 사진만 좌우 flip
+                cv2.imwrite(str(new_images / f'{name}.jpg'), resize_shape(img))     # 640x640으로 변환 후 저장
+            else:
+                cv2.imwrite(str(new_images / f'{name}.jpg'), resize_shape(img))     # 640x640으로 변환 후 저장
             shutil.copy(labels / f'{name}.txt', new_labels / f'{name}.txt')
+            i = (i % 2) + 1
 
 
 def add_vertical_flip(dir_target):
@@ -177,17 +185,19 @@ def main(opt):
             raise ValueError('yes와 no 중에서만 입력해주십시오.')
     
     # train, valid, test 로 나누기
-    split_data(DATASET, NEWDATA)
+    print('split 시작')
+    split_data(DATASET, NEWDATA, flip=True)
+    print('완료!')
 
     # train, valid, test 폴더의 이미지들을 좌우반전하여 추가하기
-    print('좌우 반전 추가 시작!')
-    add_vertical_flip(NEWDATA / 'train')
-    add_vertical_flip(NEWDATA / 'valid')
-    add_vertical_flip(NEWDATA / 'test')
-    print('좌우 반전 추가 완료!\n')
+    # print('좌우 반전 추가 시작')
+    # add_vertical_flip(NEWDATA / 'train')
+    # add_vertical_flip(NEWDATA / 'valid')
+    # add_vertical_flip(NEWDATA / 'test')
+    # print('좌우 반전 추가 완료!\n')
 
     # train, valid, test 폴더의 이미지들을 각각 augmentation으로 뻥튀기하기
-    print(opt.multi_num, '배로 뻥튀기 시작!')
+    print(opt.multi_num, '배로 뻥튀기 시작')
     pop_rice(NEWDATA / 'train', opt.multi_num)
     pop_rice(NEWDATA / 'valid', opt.multi_num)
     pop_rice(NEWDATA / 'test', opt.multi_num)
