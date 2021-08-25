@@ -1,5 +1,6 @@
 runs/*
 datasets/*
+data/*
 
 # cache files
 models/__pycache__/*
