@@ -69,13 +69,15 @@ for path, img, im0s, video_cap in dataset:
 
         # 송신
         res = requests.post(
-            "http://172.30.1.52:38080/predict",
+            "http://222.111.51.152:38080/predict",
             files={"file": strData, "t_send": f'{time_sync():.4f}'}
         )
 
         # print(response.json())
         res = res.json()
-        print(res['pred'], res['result'])
+        pred = np.frombuffer(eval(res['pred']), dtype=np.int32)
+        print(pred, pred.dtype, end='')
+        print(res['result'])
 
 
     # ======================
