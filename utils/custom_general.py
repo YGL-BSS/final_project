@@ -63,7 +63,7 @@ class GestureBuffer():
         인식된 action list 반환하기
         '''
         buf = self.log_detect
-        detected_action = np.array([0] * len(self._names))
+        detected_action = np.array([0] * len(self._names), dtype=np.int32)
         now = time.time()
 
         if now - self._now >= self._buf_delay:

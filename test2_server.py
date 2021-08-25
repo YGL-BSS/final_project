@@ -128,22 +128,11 @@ def get_prediction(img_bytes, t_send):
     # if cmd:
     #     print(cmd)
     #     G2C.activate_command(cmd)
-    print('나 여기있어!')
     BF.update_buf(detected_num, t_send)
-    print('나 여기있어!')
     detected_action = BF.get_action()
-    print('나 여기있어!')
     if detected_action.sum() > 0:
         print(detected_action)
     
-    # send result to client_obj
-    detected_action = detected_action.tobytes()                 # encode
-    # response = requests.post(
-    #     '주소',
-    #     files={"files": detected_action}
-    # )
-
-    # return response
     return detected_action
 
 @app.route('/predict', methods=['POST'])
@@ -151,11 +140,13 @@ def predict():
     if request.method == 'POST':
         img_bytes = request.files['file'].read()
         t_send = float(request.files['t_send'].read())
-        print(len(img_bytes), t_send)
+        # print(len(img_bytes), t_send)
         try:
             pred = get_prediction(img_bytes=img_bytes, t_send=t_send)
+            print(pred, pred.dtype)
+            pred = pred.tobytes()       # encode
             result = 'Success'
-            print('good')
+            # print('good')
         except:
             pred = b'0'
             result = 'Fail'
