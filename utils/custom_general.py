@@ -38,14 +38,17 @@ class GestureBuffer():
         self._now = time.time()
         self._buf_delay = 1  # 1 sec 동안의 데이터만 저장
 
-    def update_buf(self, detect_num, t_send):
+    def update_buf(self, t_send, detect_num=None):
         '''
-        
+        새로운 detect가 발생할때마다 버퍼를 업데이트하는 함수
+        detect 없이 갱신도 가능함
         '''
         log_detect = self.log_detect
         log_time = self.log_time
-        log_detect = np.append(log_detect, np.array([detect_num]), axis=0)
-        log_time = np.append(log_time, np.array([[t_send]]), axis=0)
+        
+        if type(detect_num) != type(None):
+            log_detect = np.append(log_detect, np.array([detect_num]), axis=0)
+            log_time = np.append(log_time, np.array([[t_send]]), axis=0)
 
         # 현재 시간과 비교해서 날릴 내용은 날리기
         now = time.time()
