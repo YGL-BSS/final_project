@@ -22,7 +22,7 @@ from utils.torch_utils import select_device, time_sync
 from utils.ppt import output_to_detect, EncodeInput, Gesture2Command
 
 @torch.no_grad()
-def run(weights='runs/train/v5l_results2/weights/best.pt'):
+def run(weights='runs/train/v5s_results_v0/weights/best.pt'):
     imgsz = 640
     conf_th = 0.45
     iou_th = 0.45
@@ -41,7 +41,8 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
 
     model = attempt_load(w, map_location=device)
     stride = int(model.stride.max())
-    names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
+    # names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
+    names = [str(i) for i in range(8)]
     if half:
         model.half()
     
@@ -119,13 +120,14 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
         for n, label in zip(detected_num, detected_list):
             hand_detected += [label] * int(n)
 
-        # preprocess detected hand signal   # 정민형 팀원 코드 추가
-        cmd = EI.encode(hand_detected)
+        # # preprocess detected hand signal   # 정민형 팀원 코드 추가
+        # cmd = EI.encode(hand_detected)
+        print(hand_detected)
 
-        # Action according to the command   # 박도현 팀원 코드 추가
-        if cmd:
-            print(cmd)
-            G2C.activate_command(cmd)
+        # # Action according to the command   # 박도현 팀원 코드 추가
+        # if cmd:
+        #     print(cmd)
+        #     G2C.activate_command(cmd)
 
         # show fps
         cv2.putText(
@@ -134,7 +136,7 @@ def run(weights='runs/train/v5l_results2/weights/best.pt'):
         )
 
         # Stream
-        cv2.imshow(str(p), im0)
+        # cv2.imshow(str(p), im0)
         cv2.imshow('webcam', im0)
         cv2.waitKey(1)
 

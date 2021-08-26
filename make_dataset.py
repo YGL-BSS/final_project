@@ -60,6 +60,9 @@ def split_data(dir_target, dir_save, split_rate=(0.8, 0.1, 0.1), flip=False):
             (dir_save / folder_split).mkdir()
         i = 0
         for name in tqdm(names_split, desc=f'split [{folder_split}]'):
+            i += 1
+            if i % 4 != 0:  # 데이터 수를 1/4배.
+                continue
             new_images = dir_save / folder_split / 'images'
             new_labels = dir_save / folder_split / 'labels'
             if not new_images.exists(): new_images.mkdir()
@@ -72,7 +75,6 @@ def split_data(dir_target, dir_save, split_rate=(0.8, 0.1, 0.1), flip=False):
             else:
                 cv2.imwrite(str(new_images / f'{name}.jpg'), resize_shape(img))     # 640x640으로 변환 후 저장
             shutil.copy(labels / f'{name}.txt', new_labels / f'{name}.txt')
-            i = (i % 2) + 1
 
 
 def add_vertical_flip(dir_target):
