@@ -31,7 +31,7 @@ import requests
 
 app = Flask(__name__)
 
-weights='runs/train/v5s_results22/weights/best.pt'
+weights='runs/train/v5m_results_v03/weights/best.pt'
 imgsz = 640
 conf_th = 0.55
 iou_th = 0.45
@@ -39,6 +39,8 @@ max_detect = 1000
 device = ''
 
 half = False
+
+print('weights : ', weights)
 
 # Initialize
 set_logging()
@@ -50,7 +52,8 @@ stride, names = 64, [f'class{i}' for i in range(10000)]
 
 model = attempt_load(w, map_location=device)
 stride = int(model.stride.max())
-names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
+# names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
+names = ['five', 'four', 'K', 'L', 'one', 'three', 'two', 'zero']
 if half:
     model.half()
 
@@ -142,8 +145,10 @@ def sendimg():##################이름바꾸기
             result = 'Success'
         except:
             result = 'Fail'
+        
+        ping = time_sync() - t_send
 
-        return result
+        return jsonify({'result': result, 'ping': f'{ping:.4f}'})
 
 
 @app.route('/getcmd', methods=['GET'])

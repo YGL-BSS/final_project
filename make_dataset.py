@@ -101,6 +101,7 @@ def add_vertical_flip(dir_target):
         new_coords_flip = coords
         for i, coord in enumerate(coords):
             try:
+                coord = coord.split()
                 new_coords_flip[i] = flip_vertical_coord(coord)
             except:
                 break

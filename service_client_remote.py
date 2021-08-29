@@ -25,7 +25,15 @@ from utils.ppt import output_to_detect, EncodeInput, Gesture2Command
 from utils.custom_general import TimeCheck
 
 import requests
+import os
 
+def clear():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+# server 주소
+SERVER_IP = input('server의 ip를 입력해주세요 >> ')
+# SERVER_IP = '222.111.51.152'
+URI = f'http://{SERVER_IP}:38080/sendimg'
 
 imgsz = 640
 device = ''
@@ -54,10 +62,11 @@ encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
 FPS = 30
 tc_fps = TimeCheck(out=False)    # out=True면 time debugging 가능
 delay = 10000
+cnt = 0
 for path, img, im0s, video_cap in dataset:
     delay = tc_fps.check('0', ret=True)
-    # print()
     if delay > 1./FPS:
+        cnt += 1
         tc_fps.initial()
         tc = TimeCheck(out=False)
         tc.initial('encode')
@@ -68,17 +77,28 @@ for path, img, im0s, video_cap in dataset:
 
         # 송신
         res = requests.post(
-            "http://222.111.51.152:38080/sendimg",
+            URI,
             files={"file": strData, "t_send": f'{time_sync():.4f}'}
         )
 
-        res = res.content.decode()
-        if res != 'Success':            # error
-            print(res.content.decode())
-
+        # res = res.content.decode()
+        # if res != 'Success':            # error
+        #     print(res, f'(time : {time.localtime()})')
+        
+        res = res.json()
+        if cnt > 10:
+            clear()
+            now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            # print(f"ping : {float(res['ping']):7.4f} [ms], now : {now}")
+            print(f"[{now}] result: {res['result']}\tping: {float(res['ping']):7.4f} sec")
+            cnt = 0
+        
+        cv2.imshow('webcam', im0s[0])
+        cv2.waitKey(1)
+        
     # ======================
     press = cv2.waitKey(1)
     if press == ord('q'):
         break
 
-# cv2.destroyAllWindows()
+cv2.destroyAllWindows()

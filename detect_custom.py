@@ -22,7 +22,7 @@ from utils.torch_utils import select_device, time_sync
 from utils.ppt import output_to_detect, EncodeInput, Gesture2Command
 
 @torch.no_grad()
-def run(weights='runs/train/v5s_results_v0/weights/best.pt'):
+def run(weights='runs/train/v5m_results_v03/weights/best.pt'):
     imgsz = 640
     conf_th = 0.45
     iou_th = 0.45
@@ -42,7 +42,7 @@ def run(weights='runs/train/v5s_results_v0/weights/best.pt'):
     model = attempt_load(w, map_location=device)
     stride = int(model.stride.max())
     # names = ['K', 'L', 'paper', 'rock', 'scissor', 'W']
-    names = [str(i) for i in range(8)]
+    names = ['five', 'four', 'K', 'L', 'one', 'three', 'two', 'zero']
     if half:
         model.half()
     
